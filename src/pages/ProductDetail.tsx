@@ -3,11 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, ChevronLeft, ChevronRight, MessageCircle, Flag, Star } from "lucide-react";
+import { MapPin, Calendar, ChevronLeft, ChevronRight, MessageCircle, Flag, Star, Heart } from "lucide-react";
 import ConditionBadge from "@/components/ConditionBadge";
 import StarRating from "@/components/StarRating";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import TrustScore from "@/components/TrustScore";
+import SellerBadges from "@/components/SellerBadges";
+import MeetupSpots from "@/components/MeetupSpots";
+import WishlistButton from "@/components/WishlistButton";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
+import { useTrustScore } from "@/hooks/useTrustScore";
+import { useWishlist } from "@/hooks/useWishlist";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -26,6 +33,9 @@ const ProductDetail = () => {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
 
+  const { score: trustScore, badges: sellerBadges, isVerified } = useTrustScore(product?.seller_id);
+  const { isWishlisted, toggleWishlist } = useWishlist();
+
   useEffect(() => {
     if (!id) return;
     const fetchData = async () => {
@@ -37,6 +47,11 @@ const ProductDetail = () => {
       setProduct(prod);
 
       if (prod) {
+        // Track product view
+        if (user) {
+          supabase.from("product_views").insert({ product_id: prod.id, viewer_id: user.id }).then(() => {});
+        }
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
@@ -55,7 +70,6 @@ const ProductDetail = () => {
         }
 
         if (user) {
-          // Check if user chatted with seller
           const { data: chat } = await supabase
             .from("chats")
             .select("id")
@@ -64,7 +78,6 @@ const ProductDetail = () => {
             .single();
           setCanRate(!!chat && user.id !== prod.seller_id);
 
-          // Check existing rating
           const { data: existingRating } = await supabase
             .from("ratings")
             .select("rating")
@@ -84,7 +97,6 @@ const ProductDetail = () => {
     if (!product) return;
     setChatLoading(true);
     try {
-      // Check if chat exists
       const { data: existing } = await supabase
         .from("chats")
         .select("id")
@@ -179,6 +191,15 @@ const ProductDetail = () => {
                   <span className="text-2xl font-bold text-white bg-foreground/80 px-6 py-2 rounded-full">SOLD</span>
                 </div>
               )}
+              {/* Wishlist */}
+              <div className="absolute top-3 right-3">
+                <WishlistButton
+                  productId={product.id}
+                  isWishlisted={isWishlisted(product.id)}
+                  onToggle={toggleWishlist}
+                  size="md"
+                />
+              </div>
               {product.images?.length > 1 && (
                 <>
                   <button
@@ -223,6 +244,11 @@ const ProductDetail = () => {
                 <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${product.is_sold ? "bg-muted text-muted-foreground border-border" : "bg-emerald-100 text-emerald-700 border-emerald-200"}`}>
                   {product.is_sold ? "Sold" : "Available"}
                 </span>
+                {product.price_reduced_at && (
+                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    Price Reduced
+                  </span>
+                )}
               </div>
             </div>
 
@@ -265,17 +291,24 @@ const ProductDetail = () => {
 
             {/* Seller Info */}
             {sellerProfile && (
-              <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full gradient-cta flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                  {sellerProfile.full_name?.[0]?.toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-sm text-foreground">{sellerProfile.full_name}</p>
-                  <div className="flex items-center gap-2">
-                    <StarRating rating={sellerRating} showValue />
-                    {ratingCount > 0 && <span className="text-xs text-muted-foreground">({ratingCount})</span>}
+              <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full gradient-cta flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    {sellerProfile.full_name?.[0]?.toUpperCase()}
                   </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-sm text-foreground">{sellerProfile.full_name}</p>
+                      {isVerified && <VerifiedBadge size="sm" />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <StarRating rating={sellerRating} showValue />
+                      {ratingCount > 0 && <span className="text-xs text-muted-foreground">({ratingCount})</span>}
+                    </div>
+                  </div>
+                  <TrustScore score={trustScore} />
                 </div>
+                {sellerBadges.length > 0 && <SellerBadges badges={sellerBadges} />}
               </div>
             )}
 
@@ -323,6 +356,9 @@ const ProductDetail = () => {
                 </div>
               </div>
             )}
+
+            {/* Meetup Spots */}
+            <MeetupSpots />
 
             {/* Report */}
             {user && user.id !== product.seller_id && (

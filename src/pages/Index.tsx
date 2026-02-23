@@ -5,9 +5,15 @@ import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
+import { useAuth } from "@/contexts/AuthContext";
+import { useWishlist } from "@/hooks/useWishlist";
 
 const Index = () => {
+  const { user, profile } = useAuth();
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [recentProducts, setRecentProducts] = useState<any[]>([]);
+  const [nearbyProducts, setNearbyProducts] = useState<any[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchRecent = async () => {
@@ -21,6 +27,72 @@ const Index = () => {
     };
     fetchRecent();
   }, []);
+
+  // Near You products
+  useEffect(() => {
+    if (!profile?.area) return;
+    const fetchNearby = async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_sold", false)
+        .eq("area", profile.area as any)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      setNearbyProducts(data || []);
+    };
+    fetchNearby();
+  }, [profile?.area]);
+
+  // Trending products (most wishlisted - approximated by recent views)
+  useEffect(() => {
+    const fetchTrending = async () => {
+      // Get products with most views in last 7 days
+      const { data: viewData } = await supabase
+        .from("product_views")
+        .select("product_id")
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (viewData && viewData.length > 0) {
+        const counts: Record<string, number> = {};
+        viewData.forEach(v => { counts[v.product_id] = (counts[v.product_id] || 0) + 1; });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const ids = sorted.map(s => s[0]);
+
+        if (ids.length > 0) {
+          const { data: products } = await supabase
+            .from("products")
+            .select("*")
+            .in("id", ids)
+            .eq("is_sold", false);
+          setTrendingProducts(products || []);
+          return;
+        }
+      }
+      // Fallback: most recent
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_sold", false)
+        .order("created_at", { ascending: false })
+        .limit(6);
+      setTrendingProducts(data || []);
+    };
+    fetchTrending();
+  }, []);
+
+  const ProductGrid = ({ products }: { products: any[] }) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          isWishlisted={isWishlisted(product.id)}
+          onToggleWishlist={toggleWishlist}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen">
@@ -117,6 +189,42 @@ const Index = () => {
         </div>
       </section>
 
+      {/* NEAR YOU */}
+      {user && nearbyProducts.length > 0 && (
+        <section className="py-16 px-4 bg-card">
+          <div className="container max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="font-display text-3xl font-bold text-foreground mb-1">📍 Near You</h2>
+                <p className="text-muted-foreground">Products in {profile?.area}</p>
+              </div>
+              <Button variant="ghost" asChild className="flex items-center gap-1 text-primary">
+                <Link to={`/browse?area=${profile?.area}`}>See All <ChevronRight className="w-4 h-4" /></Link>
+              </Button>
+            </div>
+            <ProductGrid products={nearbyProducts} />
+          </div>
+        </section>
+      )}
+
+      {/* TRENDING NOW */}
+      {trendingProducts.length > 0 && (
+        <section className={`py-16 px-4 ${user && nearbyProducts.length > 0 ? "gradient-hero" : "bg-card"}`}>
+          <div className="container max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="font-display text-3xl font-bold text-foreground mb-1">🔥 Trending Now</h2>
+                <p className="text-muted-foreground">Most popular products this week</p>
+              </div>
+              <Button variant="ghost" asChild className="flex items-center gap-1 text-primary">
+                <Link to="/browse">See All <ChevronRight className="w-4 h-4" /></Link>
+              </Button>
+            </div>
+            <ProductGrid products={trendingProducts} />
+          </div>
+        </section>
+      )}
+
       {/* RECENTLY ADDED */}
       <section className="py-16 px-4 bg-card">
         <div className="container max-w-6xl mx-auto">
@@ -130,11 +238,7 @@ const Index = () => {
             </Button>
           </div>
           {recentProducts.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-              {recentProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <ProductGrid products={recentProducts} />
           ) : (
             <div className="text-center py-16 bg-background rounded-2xl border border-dashed border-border">
               <div className="text-4xl mb-3">✨</div>

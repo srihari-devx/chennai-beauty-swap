@@ -78,6 +78,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_reports: {
         Row: {
           created_at: string
@@ -110,6 +143,35 @@ export type Database = {
           },
         ]
       }
+      product_views: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          viewer_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          viewer_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          viewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_views_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           area: Database["public"]["Enums"]["chennai_area"]
@@ -123,6 +185,8 @@ export type Database = {
           is_sold: boolean
           name: string
           original_price: number
+          previous_price: number | null
+          price_reduced_at: string | null
           reason_for_selling: string | null
           seller_id: string
           selling_price: number
@@ -140,6 +204,8 @@ export type Database = {
           is_sold?: boolean
           name: string
           original_price: number
+          previous_price?: number | null
+          price_reduced_at?: string | null
           reason_for_selling?: string | null
           seller_id: string
           selling_price: number
@@ -157,6 +223,8 @@ export type Database = {
           is_sold?: boolean
           name?: string
           original_price?: number
+          previous_price?: number | null
+          price_reduced_at?: string | null
           reason_for_selling?: string | null
           seller_id?: string
           selling_price?: number
@@ -170,27 +238,42 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           full_name: string
+          gender: string | null
           id: string
+          is_verified: boolean | null
           updated_at: string
           user_id: string
+          verification_document_url: string | null
+          verification_status: string | null
+          verification_submitted_at: string | null
         }
         Insert: {
           area?: Database["public"]["Enums"]["chennai_area"]
           avatar_url?: string | null
           created_at?: string
           full_name: string
+          gender?: string | null
           id?: string
+          is_verified?: boolean | null
           updated_at?: string
           user_id: string
+          verification_document_url?: string | null
+          verification_status?: string | null
+          verification_submitted_at?: string | null
         }
         Update: {
           area?: Database["public"]["Enums"]["chennai_area"]
           avatar_url?: string | null
           created_at?: string
           full_name?: string
+          gender?: string | null
           id?: string
+          is_verified?: boolean | null
           updated_at?: string
           user_id?: string
+          verification_document_url?: string | null
+          verification_status?: string | null
+          verification_submitted_at?: string | null
         }
         Relationships: []
       }
@@ -218,6 +301,27 @@ export type Database = {
         }
         Relationships: []
       }
+      seller_badges: {
+        Row: {
+          badge_type: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_type: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_type?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -235,6 +339,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wishlists: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlists_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConditionBadge from "@/components/ConditionBadge";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import WishlistButton from "@/components/WishlistButton";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -18,16 +20,22 @@ interface ProductCardProps {
     is_sold: boolean;
     category: string;
     seller_id: string;
-    profiles?: { full_name: string; area: string } | null;
+    previous_price?: number | null;
+    price_reduced_at?: string | null;
+    profiles?: { full_name: string; area: string; is_verified?: boolean } | null;
   };
   showChatButton?: boolean;
+  isWishlisted?: boolean;
+  onToggleWishlist?: (productId: string) => void;
+  sellerVerified?: boolean;
 }
 
-const ProductCard = ({ product, showChatButton = true }: ProductCardProps) => {
+const ProductCard = ({ product, showChatButton = true, isWishlisted = false, onToggleWishlist, sellerVerified }: ProductCardProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const categoryInfo = PRODUCT_CATEGORIES.find(c => c.value === product.category);
   const imageUrl = product.images?.[0];
+  const isPriceReduced = !!product.price_reduced_at;
 
   const handleChat = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -61,12 +69,27 @@ const ProductCard = ({ product, showChatButton = true }: ProductCardProps) => {
               <span className="bg-card text-foreground text-sm font-bold px-3 py-1 rounded-full">Sold</span>
             </div>
           )}
-          {/* Available badge */}
-          {!product.is_sold && (
-            <div className="absolute top-2 left-2">
+          {/* Top badges row */}
+          <div className="absolute top-2 left-2 flex gap-1.5">
+            {!product.is_sold && (
               <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                 Available
               </span>
+            )}
+            {isPriceReduced && (
+              <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                Price Reduced
+              </span>
+            )}
+          </div>
+          {/* Wishlist button */}
+          {onToggleWishlist && (
+            <div className="absolute top-2 right-2">
+              <WishlistButton
+                productId={product.id}
+                isWishlisted={isWishlisted}
+                onToggle={onToggleWishlist}
+              />
             </div>
           )}
         </div>
@@ -75,7 +98,10 @@ const ProductCard = ({ product, showChatButton = true }: ProductCardProps) => {
         <div className="p-3">
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground font-medium truncate">{product.brand}</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs text-muted-foreground font-medium truncate">{product.brand}</p>
+                {(sellerVerified || product.profiles?.is_verified) && <VerifiedBadge size="sm" />}
+              </div>
               <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
             </div>
             <p className="text-primary font-bold text-sm whitespace-nowrap">₹{product.selling_price}</p>
