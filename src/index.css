@@ -92,6 +92,51 @@
     --input: 330 15% 20%;
     --ring: 340 65% 65%;
   }
+
+  /* Blue theme for masculine preference */
+  [data-theme="blue"] {
+    --background: 210 30% 98%;
+    --foreground: 210 15% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 15% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 15% 20%;
+    --primary: 210 65% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 35% 90%;
+    --secondary-foreground: 200 25% 35%;
+    --muted: 210 25% 95%;
+    --muted-foreground: 210 10% 50%;
+    --accent: 200 40% 92%;
+    --accent-foreground: 200 30% 30%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 210 65% 55%;
+    --pink-light: 210 60% 95%;
+    --pink-mid: 210 65% 88%;
+    --beige: 200 40% 94%;
+    --beige-dark: 200 30% 85%;
+    --lavender: 200 40% 88%;
+    --lavender-dark: 200 35% 75%;
+    --cream: 200 60% 97%;
+    --gradient-hero: linear-gradient(135deg, hsl(210 60% 95%), hsl(200 40% 92%), hsl(200 60% 97%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 30% 98%));
+    --gradient-cta: linear-gradient(135deg, hsl(210 65% 55%), hsl(230 50% 60%));
+    --shadow-sm: 0 2px 12px hsl(210 30% 70% / 0.15);
+    --shadow-md: 0 4px 24px hsl(210 30% 70% / 0.20);
+    --shadow-lg: 0 8px 40px hsl(210 30% 70% / 0.25);
+    --shadow-card: 0 4px 20px hsl(210 40% 75% / 0.15);
+    --sidebar-background: 210 30% 97%;
+    --sidebar-foreground: 210 15% 25%;
+    --sidebar-primary: 210 65% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 40% 92%;
+    --sidebar-accent-foreground: 200 30% 30%;
+    --sidebar-border: 210 20% 88%;
+    --sidebar-ring: 210 65% 55%;
+  }
 }
 
 @layer base {

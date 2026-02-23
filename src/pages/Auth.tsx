@@ -18,6 +18,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [area, setArea] = useState("T Nagar");
+  const [gender, setGender] = useState("female");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const Auth = () => {
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, area },
+            data: { full_name: fullName, area, gender },
           },
         });
         if (error) throw error;
@@ -142,6 +143,32 @@ const Auth = () => {
                 </button>
               </div>
             </div>
+
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="gender">I am</Label>
+                <div className="flex gap-2">
+                  {[
+                    { value: "female", label: "🌸 Female", theme: "pink" },
+                    { value: "male", label: "💙 Male", theme: "blue" },
+                    { value: "other", label: "✨ Other", theme: "pink" },
+                  ].map(g => (
+                    <button
+                      key={g.value}
+                      type="button"
+                      onClick={() => setGender(g.value)}
+                      className={`flex-1 py-2 text-sm font-medium rounded-xl border transition-all ${
+                        gender === g.value
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {mode === "signup" && (
               <div className="space-y-1.5">

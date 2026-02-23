@@ -1,14 +1,17 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, MessageCircle, User, LogOut, LayoutDashboard, Menu, X } from "lucide-react";
+import { ShoppingBag, Plus, MessageCircle, User, LogOut, LayoutDashboard, Menu, X, Palette } from "lucide-react";
 import { useState } from "react";
+import NotificationBell from "@/components/NotificationBell";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Navbar = () => {
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     await signOut();
@@ -84,8 +87,19 @@ const Navbar = () => {
           )}
         </nav>
 
-        {/* Auth Buttons */}
+        {/* Right side */}
         <div className="hidden md:flex items-center gap-2">
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(theme === "pink" ? "blue" : "pink")}
+            className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            title={`Switch to ${theme === "pink" ? "blue" : "pink"} theme`}
+          >
+            <Palette className="w-4 h-4" />
+          </button>
+
+          {user && <NotificationBell />}
+
           {user ? (
             <>
               <Button size="sm" asChild className="gradient-cta text-primary-foreground border-0 shadow-sm">
@@ -112,12 +126,15 @@ const Navbar = () => {
         </div>
 
         {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="md:hidden flex items-center gap-1">
+          {user && <NotificationBell />}
+          <button
+            className="p-2 rounded-lg hover:bg-muted transition-colors"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Menu */}
@@ -142,6 +159,12 @@ const Navbar = () => {
                   <LayoutDashboard className="w-4 h-4" /> Admin
                 </Link>
               )}
+              <button
+                onClick={() => { setTheme(theme === "pink" ? "blue" : "pink"); setMenuOpen(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Palette className="w-4 h-4" /> Switch to {theme === "pink" ? "Blue" : "Pink"} Theme
+              </button>
               <button onClick={handleSignOut} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
                 <LogOut className="w-4 h-4" /> Sign Out
               </button>

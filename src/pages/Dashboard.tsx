@@ -4,20 +4,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, CheckCircle, MapPin, Package, MessageCircle, User } from "lucide-react";
+import { Plus, Edit, Trash2, CheckCircle, MapPin, Package, MessageCircle, Heart } from "lucide-react";
 import ConditionBadge from "@/components/ConditionBadge";
 import StarRating from "@/components/StarRating";
+import TrustScore from "@/components/TrustScore";
+import VerifiedBadge from "@/components/VerifiedBadge";
+import SellerBadges from "@/components/SellerBadges";
+import ProductCard from "@/components/ProductCard";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
+import { useTrustScore } from "@/hooks/useTrustScore";
+import { useWishlist } from "@/hooks/useWishlist";
 
 const Dashboard = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [listings, setListings] = useState<any[]>([]);
   const [chats, setChats] = useState<any[]>([]);
+  const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
   const [sellerRating, setSellerRating] = useState(0);
   const [ratingCount, setRatingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const { score: trustScore, badges: sellerBadges, isVerified } = useTrustScore(user?.id);
+  const { wishlistIds, isWishlisted, toggleWishlist } = useWishlist();
 
   const fetchData = async () => {
     if (!user) return;
@@ -50,6 +60,17 @@ const Dashboard = () => {
     setLoading(false);
   };
 
+  // Fetch wishlist products
+  useEffect(() => {
+    if (wishlistIds.size === 0) { setWishlistProducts([]); return; }
+    const fetchWishlistProducts = async () => {
+      const ids = Array.from(wishlistIds);
+      const { data } = await supabase.from("products").select("*").in("id", ids);
+      setWishlistProducts(data || []);
+    };
+    fetchWishlistProducts();
+  }, [wishlistIds]);
+
   useEffect(() => { fetchData(); }, [user]);
 
   const markAsSold = async (id: string) => {
@@ -73,23 +94,32 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background">
       <div className="container max-w-4xl mx-auto px-4 py-8">
         {/* Profile Card */}
-        <div className="bg-card rounded-2xl border border-border shadow-card p-6 mb-6 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full gradient-cta flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-            {profile?.full_name?.[0]?.toUpperCase() || "?"}
-          </div>
-          <div className="flex-1">
-            <h2 className="font-display text-xl font-bold text-foreground">{profile?.full_name}</h2>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <MapPin className="w-3.5 h-3.5 text-primary" /> {profile?.area}
+        <div className="bg-card rounded-2xl border border-border shadow-card p-6 mb-6">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="w-14 h-14 rounded-full gradient-cta flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+              {profile?.full_name?.[0]?.toUpperCase() || "?"}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-1.5">
+                <h2 className="font-display text-xl font-bold text-foreground">{profile?.full_name}</h2>
+                {isVerified && <VerifiedBadge size="md" />}
               </div>
-              <StarRating rating={sellerRating} showValue />
-              {ratingCount > 0 && <span className="text-xs text-muted-foreground">({ratingCount} ratings)</span>}
+              <div className="flex items-center gap-3 mt-1 flex-wrap">
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5 text-primary" /> {profile?.area}
+                </div>
+                <StarRating rating={sellerRating} showValue />
+                {ratingCount > 0 && <span className="text-xs text-muted-foreground">({ratingCount} ratings)</span>}
+              </div>
+            </div>
+            <div className="text-right hidden sm:block">
+              <p className="text-2xl font-bold text-primary">{listings.filter(l => !l.is_sold).length}</p>
+              <p className="text-xs text-muted-foreground">Active Listings</p>
             </div>
           </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-2xl font-bold text-primary">{listings.filter(l => !l.is_sold).length}</p>
-            <p className="text-xs text-muted-foreground">Active Listings</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <TrustScore score={trustScore} />
+            <SellerBadges badges={sellerBadges} />
           </div>
         </div>
 
@@ -97,6 +127,9 @@ const Dashboard = () => {
           <TabsList className="w-full bg-muted rounded-xl mb-6 p-1">
             <TabsTrigger value="listings" className="flex-1 rounded-lg text-sm">
               <Package className="w-4 h-4 mr-1.5" /> My Listings
+            </TabsTrigger>
+            <TabsTrigger value="wishlist" className="flex-1 rounded-lg text-sm">
+              <Heart className="w-4 h-4 mr-1.5" /> Saved ({wishlistProducts.length})
             </TabsTrigger>
             <TabsTrigger value="chats" className="flex-1 rounded-lg text-sm">
               <MessageCircle className="w-4 h-4 mr-1.5" /> Chats
@@ -177,6 +210,31 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* WISHLIST TAB */}
+          <TabsContent value="wishlist">
+            {wishlistProducts.length === 0 ? (
+              <div className="text-center py-16 bg-card rounded-2xl border border-dashed border-border">
+                <div className="text-4xl mb-3">💖</div>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-2">No saved products</h3>
+                <p className="text-muted-foreground text-sm mb-4">Browse and save products you love!</p>
+                <Button asChild className="gradient-cta border-0 text-primary-foreground rounded-xl">
+                  <a href="/browse">Browse Products</a>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {wishlistProducts.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    isWishlisted={isWishlisted(product.id)}
+                    onToggleWishlist={toggleWishlist}
+                  />
+                ))}
               </div>
             )}
           </TabsContent>
