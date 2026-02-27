@@ -55,7 +55,7 @@ const App = () => (
                       <Dashboard />
                     </ProtectedRoute>
                   } />
-                  <Route path="/admin" element={
+                  <Route path="/cbs-admin" element={
                     <ProtectedRoute adminOnly>
                       <Admin />
                     </ProtectedRoute>
