@@ -7,28 +7,27 @@ Deno.serve(async (req) => {
 
   const { email, password } = await req.json();
 
-  // Create user
-  const { data: userData, error: signUpError } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: "Admin", area: "Other", gender: "male" },
-  });
+  // Find user by email
+  const { data: listData } = await supabase.auth.admin.listUsers();
+  let userId = listData?.users?.find((u: any) => u.email === email)?.id;
 
-  if (signUpError && !signUpError.message.includes("already been registered")) {
-    return new Response(JSON.stringify({ error: signUpError.message }), { status: 400 });
+  // If user doesn't exist and password provided, create them
+  if (!userId && password) {
+    const { data: userData, error: signUpError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: "Admin", area: "Other", gender: "male" },
+    });
+
+    if (signUpError) {
+      return new Response(JSON.stringify({ error: signUpError.message }), { status: 400 });
+    }
+    userId = userData?.user?.id;
   }
 
-  // Get user id
-  let userId = userData?.user?.id;
   if (!userId) {
-    const { data: listData } = await supabase.auth.admin.listUsers();
-    const found = listData?.users?.find((u: any) => u.email === email);
-    userId = found?.id;
-  }
-
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "User not found" }), { status: 404 });
+    return new Response(JSON.stringify({ error: "User not found. They must sign up first." }), { status: 404 });
   }
 
   // Insert admin role
