@@ -1,0 +1,1 @@
+ALTER TABLE public.ratings ADD CONSTRAINT ratings_rater_seller_unique UNIQUE (rater_id, seller_id);

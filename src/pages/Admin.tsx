@@ -54,7 +54,7 @@ const Admin = () => {
       supabase.from("product_reports").select("*, products(name, brand)").order("created_at", { ascending: false }),
       supabase.from("product_views").select("product_id"),
       supabase.from("chats").select("product_id"),
-      supabase.from("user_roles").select("*, profiles:user_id(full_name, area)").eq("role", "admin"),
+      supabase.from("user_roles").select("*").eq("role", "admin"),
     ]);
 
     const allProducts = productsRes.data || [];
@@ -133,7 +133,13 @@ const Admin = () => {
     setUsers(allProfiles);
     setProducts(allProducts);
     setReports(reportRes.data || []);
-    setAdmins(rolesRes.data || []);
+    // Map admin roles with profile data
+    const adminRoles = rolesRes.data || [];
+    const adminsWithProfiles = adminRoles.map(a => {
+      const profile = allProfiles.find(p => p.user_id === a.user_id);
+      return { ...a, profile };
+    });
+    setAdmins(adminsWithProfiles);
     setLoading(false);
   };
 
@@ -490,11 +496,11 @@ const Admin = () => {
                       <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted/30">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
-                            {(a.profiles as any)?.full_name?.[0]?.toUpperCase() || "?"}
+                            {a.profile?.full_name?.[0]?.toUpperCase() || "?"}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground">{(a.profiles as any)?.full_name || "Unknown"}</p>
-                            <p className="text-xs text-muted-foreground">{(a.profiles as any)?.area}</p>
+                            <p className="text-sm font-medium text-foreground">{a.profile?.full_name || "Unknown"}</p>
+                            <p className="text-xs text-muted-foreground">{a.profile?.area}</p>
                           </div>
                         </div>
                         <Button size="sm" variant="ghost" onClick={() => removeAdmin(a.user_id)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8">
