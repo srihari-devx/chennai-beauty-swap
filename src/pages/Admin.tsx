@@ -54,7 +54,7 @@ const Admin = () => {
       supabase.from("product_reports").select("*, products(name, brand)").order("created_at", { ascending: false }),
       supabase.from("product_views").select("product_id"),
       supabase.from("chats").select("product_id"),
-      supabase.from("user_roles").select("*, profiles:user_id(full_name, area)").eq("role", "admin"),
+      supabase.from("user_roles").select("*").eq("role", "admin"),
     ]);
 
     const allProducts = productsRes.data || [];
