@@ -496,11 +496,11 @@ const Admin = () => {
                       <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-muted/30">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
-                            {(a.profiles as any)?.full_name?.[0]?.toUpperCase() || "?"}
+                            {a.profile?.full_name?.[0]?.toUpperCase() || "?"}
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-foreground">{(a.profiles as any)?.full_name || "Unknown"}</p>
-                            <p className="text-xs text-muted-foreground">{(a.profiles as any)?.area}</p>
+                            <p className="text-sm font-medium text-foreground">{a.profile?.full_name || "Unknown"}</p>
+                            <p className="text-xs text-muted-foreground">{a.profile?.area}</p>
                           </div>
                         </div>
                         <Button size="sm" variant="ghost" onClick={() => removeAdmin(a.user_id)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8">
