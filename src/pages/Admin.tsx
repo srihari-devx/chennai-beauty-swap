@@ -133,7 +133,13 @@ const Admin = () => {
     setUsers(allProfiles);
     setProducts(allProducts);
     setReports(reportRes.data || []);
-    setAdmins(rolesRes.data || []);
+    // Map admin roles with profile data
+    const adminRoles = rolesRes.data || [];
+    const adminsWithProfiles = adminRoles.map(a => {
+      const profile = allProfiles.find(p => p.user_id === a.user_id);
+      return { ...a, profile };
+    });
+    setAdmins(adminsWithProfiles);
     setLoading(false);
   };
 
