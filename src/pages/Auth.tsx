@@ -33,7 +33,7 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -42,7 +42,30 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created! Please check your email to verify your account.");
+
+        // Auto-confirm the user's email via edge function
+        if (data.user) {
+          try {
+            await supabase.functions.invoke("confirm-signup", {
+              body: { user_id: data.user.id },
+            });
+          } catch {
+            // Confirmation may fail but user is created
+          }
+
+          // Sign in immediately after signup
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (signInError) {
+            toast.success("Account created! Please sign in.");
+            setMode("login");
+          } else {
+            toast.success("Welcome to Chennai Beauty Swap! 🌸");
+            navigate("/");
+          }
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
