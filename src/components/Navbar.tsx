@@ -166,11 +166,8 @@ const Navbar = () => {
             </>
           ) : (
             <div className="flex flex-col gap-2 pt-2">
-              <Button variant="outline" asChild className="w-full">
-                <Link to="/auth" onClick={() => setMenuOpen(false)}>Sign In</Link>
-              </Button>
               <Button asChild className="w-full gradient-cta border-0 text-primary-foreground">
-                <Link to="/auth?mode=signup" onClick={() => setMenuOpen(false)}>Join Free</Link>
+                <Link to="/auth" onClick={() => setMenuOpen(false)}>Sign In</Link>
               </Button>
             </div>
           )}
