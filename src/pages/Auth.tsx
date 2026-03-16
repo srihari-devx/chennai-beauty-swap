@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Eye, EyeOff, Sparkles } from "lucide-react";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { Eye, EyeOff, Sparkles, ArrowLeft, Mail } from "lucide-react";
 import { CHENNAI_AREAS } from "@/lib/constants";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,6 +15,8 @@ const Auth = () => {
   const [mode, setMode] = useState<"login" | "signup">(
     searchParams.get("mode") === "signup" ? "signup" : "login"
   );
+  const [showOtp, setShowOtp] = useState(false);
+  const [otpValue, setOtpValue] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -43,28 +46,9 @@ const Auth = () => {
         });
         if (error) throw error;
 
-        // Auto-confirm the user's email via edge function
         if (data.user) {
-          try {
-            await supabase.functions.invoke("confirm-signup", {
-              body: { user_id: data.user.id },
-            });
-          } catch {
-            // Confirmation may fail but user is created
-          }
-
-          // Sign in immediately after signup
-          const { error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (signInError) {
-            toast.success("Account created! Please sign in.");
-            setMode("login");
-          } else {
-            toast.success("Welcome to Chennai Beauty Swap! 🌸");
-            navigate("/");
-          }
+          toast.success("A 6-digit code has been sent to your email! 📧");
+          setShowOtp(true);
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -77,6 +61,114 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  const handleVerifyOtp = async () => {
+    if (otpValue.length !== 6) {
+      toast.error("Please enter the full 6-digit code");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otpValue,
+        type: "signup",
+      });
+      if (error) throw error;
+      toast.success("Welcome to Chennai Beauty Swap! 🌸");
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err.message || "Invalid or expired code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+      });
+      if (error) throw error;
+      toast.success("A new code has been sent to your email!");
+    } catch (err: any) {
+      toast.error(err.message || "Could not resend code");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // OTP verification screen
+  if (showOtp) {
+    return (
+      <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="font-display text-2xl font-bold text-foreground mb-1">
+              Verify Your Email
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>
+            </p>
+          </div>
+
+          <div className="bg-card rounded-2xl border border-border shadow-beauty p-6 animate-fade-in">
+            <div className="flex flex-col items-center space-y-6">
+              <InputOTP
+                maxLength={6}
+                value={otpValue}
+                onChange={setOtpValue}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+
+              <Button
+                onClick={handleVerifyOtp}
+                disabled={loading || otpValue.length !== 6}
+                className="w-full gradient-cta border-0 text-primary-foreground rounded-xl h-11 font-medium"
+              >
+                <Sparkles className="w-4 h-4" />
+                {loading ? "Verifying..." : "Verify & Join"}
+              </Button>
+
+              <div className="flex items-center gap-4 text-sm">
+                <button
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Resend code
+                </button>
+                <span className="text-muted-foreground">·</span>
+                <button
+                  onClick={() => { setShowOtp(false); setOtpValue(""); }}
+                  className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+                >
+                  <ArrowLeft className="w-3 h-3" /> Back
+                </button>
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground mt-4">
+              Check your spam folder if you don't see the email.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
@@ -172,9 +264,9 @@ const Auth = () => {
                 <Label htmlFor="gender">I am</Label>
                 <div className="flex gap-2">
                   {[
-                    { value: "female", label: "🌸 Female", theme: "pink" },
-                    { value: "male", label: "💙 Male", theme: "blue" },
-                    { value: "other", label: "✨ Other", theme: "pink" },
+                    { value: "female", label: "🌸 Female" },
+                    { value: "male", label: "💙 Male" },
+                    { value: "other", label: "✨ Other" },
                   ].map(g => (
                     <button
                       key={g.value}
