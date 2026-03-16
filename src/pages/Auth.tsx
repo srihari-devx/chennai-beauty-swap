@@ -1,29 +1,11 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Eye, EyeOff, Sparkles, ArrowLeft, Mail } from "lucide-react";
-import { CHENNAI_AREAS } from "@/lib/constants";
-import { toast } from "sonner";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { lovable } from "@/integrations/lovable/index";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 const Auth = () => {
-  const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<"login" | "signup">(
-    searchParams.get("mode") === "signup" ? "signup" : "login"
-  );
-  const [showOtp, setShowOtp] = useState(false);
-  const [otpValue, setOtpValue] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [area, setArea] = useState("T Nagar");
-  const [gender, setGender] = useState("female");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -31,149 +13,18 @@ const Auth = () => {
     if (user) navigate("/");
   }, [user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, area, gender },
-          },
-        });
-        if (error) throw error;
-
-        if (data.user) {
-          toast.success("A 6-digit code has been sent to your email! 📧");
-          setShowOtp(true);
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        navigate("/");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "An error occurred");
-    } finally {
-      setLoading(false);
+  const handleGoogleSignIn = async () => {
+    const { error } = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (error) {
+      toast.error("Sign in failed. Please try again.");
     }
   };
-
-  const handleVerifyOtp = async () => {
-    if (otpValue.length !== 6) {
-      toast.error("Please enter the full 6-digit code");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otpValue,
-        type: "signup",
-      });
-      if (error) throw error;
-      toast.success("Welcome to Chennai Beauty Swap! 🌸");
-      navigate("/");
-    } catch (err: any) {
-      toast.error(err.message || "Invalid or expired code");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email,
-      });
-      if (error) throw error;
-      toast.success("A new code has been sent to your email!");
-    } catch (err: any) {
-      toast.error(err.message || "Could not resend code");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // OTP verification screen
-  if (showOtp) {
-    return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-primary" />
-            </div>
-            <h1 className="font-display text-2xl font-bold text-foreground mb-1">
-              Verify Your Email
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              We sent a 6-digit code to <span className="font-medium text-foreground">{email}</span>
-            </p>
-          </div>
-
-          <div className="bg-card rounded-2xl border border-border shadow-beauty p-6 animate-fade-in">
-            <div className="flex flex-col items-center space-y-6">
-              <InputOTP
-                maxLength={6}
-                value={otpValue}
-                onChange={setOtpValue}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
-
-              <Button
-                onClick={handleVerifyOtp}
-                disabled={loading || otpValue.length !== 6}
-                className="w-full gradient-cta border-0 text-primary-foreground rounded-xl h-11 font-medium"
-              >
-                <Sparkles className="w-4 h-4" />
-                {loading ? "Verifying..." : "Verify & Join"}
-              </Button>
-
-              <div className="flex items-center gap-4 text-sm">
-                <button
-                  onClick={handleResendOtp}
-                  disabled={loading}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Resend code
-                </button>
-                <span className="text-muted-foreground">·</span>
-                <button
-                  onClick={() => { setShowOtp(false); setOtpValue(""); }}
-                  className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-                >
-                  <ArrowLeft className="w-3 h-3" /> Back
-                </button>
-              </div>
-            </div>
-
-            <p className="text-center text-xs text-muted-foreground mt-4">
-              Check your spam folder if you don't see the email.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Brand */}
         <div className="text-center mb-8 animate-fade-in">
           <div className="w-16 h-16 rounded-full gradient-cta flex items-center justify-center shadow-beauty mx-auto mb-4 text-3xl">
             ✿
@@ -182,136 +33,23 @@ const Auth = () => {
             Chennai Beauty Swap
           </h1>
           <p className="text-muted-foreground text-sm">
-            {mode === "login" ? "Welcome back! Sign in to continue." : "Join Chennai's beauty community."}
+            Join Chennai's beauty community
           </p>
         </div>
 
-        {/* Card */}
         <div className="bg-card rounded-2xl border border-border shadow-beauty p-6 animate-fade-in">
-          {/* Tab Toggle */}
-          <div className="flex bg-muted rounded-xl p-1 mb-6">
-            <button
-              onClick={() => setMode("login")}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                mode === "login" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setMode("signup")}
-              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
-                mode === "signup" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  placeholder="Your name"
-                  value={fullName}
-                  onChange={e => setFullName(e.target.value)}
-                  required
-                  className="rounded-xl border-border"
-                />
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="rounded-xl border-border"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Min. 6 characters"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="rounded-xl border-border pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="gender">I am</Label>
-                <div className="flex gap-2">
-                  {[
-                    { value: "female", label: "🌸 Female" },
-                    { value: "male", label: "💙 Male" },
-                    { value: "other", label: "✨ Other" },
-                  ].map(g => (
-                    <button
-                      key={g.value}
-                      type="button"
-                      onClick={() => setGender(g.value)}
-                      className={`flex-1 py-2 text-sm font-medium rounded-xl border transition-all ${
-                        gender === g.value
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background text-muted-foreground border-border hover:border-primary/40"
-                      }`}
-                    >
-                      {g.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {mode === "signup" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="area">Area in Chennai</Label>
-                <select
-                  id="area"
-                  value={area}
-                  onChange={e => setArea(e.target.value)}
-                  required
-                  className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {CHENNAI_AREAS.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">We're currently available only in Chennai 🌸</p>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full gradient-cta border-0 text-primary-foreground rounded-xl h-11 font-medium mt-2"
-            >
-              <Sparkles className="w-4 h-4" />
-              {loading ? (mode === "login" ? "Signing in..." : "Creating account...") : (mode === "login" ? "Sign In" : "Join Beauty Swap")}
-            </Button>
-          </form>
+          <Button
+            onClick={handleGoogleSignIn}
+            className="w-full h-12 rounded-xl text-base font-medium bg-white hover:bg-gray-50 text-gray-800 border border-border shadow-sm"
+          >
+            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            Continue with Google
+          </Button>
 
           <p className="text-center text-xs text-muted-foreground mt-4 leading-relaxed">
             By joining, you agree to meet sellers only in public places and use the platform responsibly.

@@ -114,14 +114,9 @@ const Navbar = () => {
               </Button>
             </>
           ) : (
-            <>
-              <Button size="sm" variant="ghost" asChild>
-                <Link to="/auth">Sign In</Link>
-              </Button>
-              <Button size="sm" asChild className="gradient-cta text-primary-foreground border-0">
-                <Link to="/auth?mode=signup">Join Free</Link>
-              </Button>
-            </>
+            <Button size="sm" asChild className="gradient-cta text-primary-foreground border-0">
+              <Link to="/auth">Sign In</Link>
+            </Button>
           )}
         </div>
 
@@ -171,11 +166,8 @@ const Navbar = () => {
             </>
           ) : (
             <div className="flex flex-col gap-2 pt-2">
-              <Button variant="outline" asChild className="w-full">
-                <Link to="/auth" onClick={() => setMenuOpen(false)}>Sign In</Link>
-              </Button>
               <Button asChild className="w-full gradient-cta border-0 text-primary-foreground">
-                <Link to="/auth?mode=signup" onClick={() => setMenuOpen(false)}>Join Free</Link>
+                <Link to="/auth" onClick={() => setMenuOpen(false)}>Sign In</Link>
               </Button>
             </div>
           )}
