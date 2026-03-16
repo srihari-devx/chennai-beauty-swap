@@ -15,29 +15,11 @@ const Auth = () => {
   }, [user]);
 
   const handleGoogleSignIn = async () => {
-    const isLovableDomain =
-      window.location.hostname.includes("lovable.app") ||
-      window.location.hostname.includes("lovableproject.com") ||
-      window.location.hostname === "localhost";
-
-    if (isLovableDomain) {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-      });
-      if (error) {
-        toast.error("Sign in failed. Please try again.");
-      }
-    } else {
-      // Custom domain (Vercel etc.) - use Supabase OAuth directly
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}`,
-        },
-      });
-      if (error) {
-        toast.error("Sign in failed. Please try again.");
-      }
+    const { error } = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (error) {
+      toast.error("Sign in failed. Please try again.");
     }
   };
 
