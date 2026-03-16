@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -14,11 +15,29 @@ const Auth = () => {
   }, [user]);
 
   const handleGoogleSignIn = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (error) {
-      toast.error("Sign in failed. Please try again.");
+    const isLovableDomain =
+      window.location.hostname.includes("lovable.app") ||
+      window.location.hostname.includes("lovableproject.com") ||
+      window.location.hostname === "localhost";
+
+    if (isLovableDomain) {
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (error) {
+        toast.error("Sign in failed. Please try again.");
+      }
+    } else {
+      // Custom domain (Vercel etc.) - use Supabase OAuth directly
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}`,
+        },
+      });
+      if (error) {
+        toast.error("Sign in failed. Please try again.");
+      }
     }
   };
 
