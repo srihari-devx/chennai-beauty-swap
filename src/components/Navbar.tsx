@@ -114,14 +114,9 @@ const Navbar = () => {
               </Button>
             </>
           ) : (
-            <>
-              <Button size="sm" variant="ghost" asChild>
-                <Link to="/auth">Sign In</Link>
-              </Button>
-              <Button size="sm" asChild className="gradient-cta text-primary-foreground border-0">
-                <Link to="/auth?mode=signup">Join Free</Link>
-              </Button>
-            </>
+            <Button size="sm" asChild className="gradient-cta text-primary-foreground border-0">
+              <Link to="/auth">Sign In</Link>
+            </Button>
           )}
         </div>
 
