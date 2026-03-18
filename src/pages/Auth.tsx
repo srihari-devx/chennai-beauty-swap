@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,77 +7,145 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Mail, User, ArrowRight } from "lucide-react";
+import { Mail, User, ArrowRight, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
-type AuthStep = "details" | "otp";
+type SignupStep = "details" | "otp";
+
+const MIN_PASSWORD_LENGTH = 6;
 
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("signin");
-  const [step, setStep] = useState<AuthStep>("details");
+  const [signupStep, setSignupStep] = useState<SignupStep>("details");
   const [loading, setLoading] = useState(false);
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [fullName, setFullName] = useState("");
   const [area, setArea] = useState<(typeof CHENNAI_AREAS)[number]>("Other");
   const [gender, setGender] = useState("female");
+
   const [otp, setOtp] = useState("");
 
   useEffect(() => {
     if (user) navigate("/");
   }, [user, navigate]);
 
+  const normalizedEmail = email.trim().toLowerCase();
+
   const resetForModeChange = (nextMode: AuthMode) => {
     setMode(nextMode);
-    setStep("details");
+    setSignupStep("details");
     setOtp("");
+    setLoading(false);
   };
 
-  const sendOtp = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-
-    if (!email.trim()) {
+  const validateEmail = () => {
+    if (!normalizedEmail) {
       toast.error("Please enter your email.");
+      return false;
+    }
+    return true;
+  };
+
+  const validatePassword = () => {
+    if (!password) {
+      toast.error("Please enter your password.");
+      return false;
+    }
+
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      toast.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignIn = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (!validateEmail() || !password) {
+      if (!password) toast.error("Please enter your password.");
       return;
     }
 
-    if (mode === "signup" && !fullName.trim()) {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password,
+    });
+    setLoading(false);
+
+    if (error) {
+      const errorMessage = error.message.toLowerCase();
+
+      if (errorMessage.includes("email not confirmed") || errorMessage.includes("not confirmed")) {
+        toast.error("Please complete signup verification first, then sign in.");
+      } else {
+        toast.error(error.message);
+      }
+
+      return;
+    }
+
+    toast.success("Signed in successfully!");
+    navigate("/");
+  };
+
+  const sendSignupOtp = async (e?: FormEvent) => {
+    e?.preventDefault();
+
+    if (!validateEmail()) return;
+
+    if (!fullName.trim()) {
       toast.error("Please enter your full name.");
+      return;
+    }
+
+    if (!validatePassword()) return;
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
       return;
     }
 
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: normalizedEmail,
       options: {
-        shouldCreateUser: mode === "signup",
-        emailRedirectTo: window.location.origin,
-        data:
-          mode === "signup"
-            ? {
-                full_name: fullName.trim(),
-                area,
-                gender,
-              }
-            : undefined,
+        shouldCreateUser: true,
+        data: {
+          full_name: fullName.trim(),
+          area,
+          gender,
+        },
       },
     });
     setLoading(false);
 
     if (error) {
-      toast.error(error.message);
+      const errorMessage = error.message.toLowerCase();
+
+      if (errorMessage.includes("already registered")) {
+        toast.error("This email is already registered. Please use Sign In.");
+      } else {
+        toast.error(error.message);
+      }
       return;
     }
 
-    setStep("otp");
+    setSignupStep("otp");
     toast.success("OTP sent. Please check your email inbox.");
   };
 
-  const verifyOtp = async (e: React.FormEvent) => {
+  const verifySignupOtp = async (e: FormEvent) => {
     e.preventDefault();
 
     if (otp.length !== 6) {
@@ -87,13 +155,13 @@ const Auth = () => {
 
     setLoading(true);
 
-    const verificationTypes = mode === "signup" ? (["signup", "email"] as const) : (["email", "magiclink"] as const);
-    let lastError: Error | null = null;
+    const verificationTypes = ["signup", "email"] as const;
     let verified = false;
+    let lastError: Error | null = null;
 
     for (const type of verificationTypes) {
       const { error } = await supabase.auth.verifyOtp({
-        email,
+        email: normalizedEmail,
         token: otp,
         type,
       });
@@ -106,14 +174,24 @@ const Auth = () => {
       lastError = error;
     }
 
-    setLoading(false);
-
     if (!verified) {
+      setLoading(false);
       toast.error(lastError?.message ?? "Invalid OTP. Please try again.");
       return;
     }
 
-    toast.success(mode === "signup" ? "Account created successfully!" : "Signed in successfully!");
+    const { error: passwordError } = await supabase.auth.updateUser({
+      password,
+    });
+
+    setLoading(false);
+
+    if (passwordError) {
+      toast.error("OTP verified, but setting password failed. Please try signup again.");
+      return;
+    }
+
+    toast.success("Account created successfully!");
     navigate("/");
   };
 
@@ -126,7 +204,11 @@ const Auth = () => {
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground mb-1">Chennai Beauty Swap</h1>
           <p className="text-muted-foreground text-sm">
-            {mode === "signup" ? "Create your account with OTP verification" : "Sign in with OTP verification"}
+            {mode === "signup"
+              ? signupStep === "details"
+                ? "Create account with details + password, then verify with OTP"
+                : "Enter OTP to finish signup"
+              : "Sign in with email and password"}
           </p>
         </div>
 
@@ -152,70 +234,34 @@ const Auth = () => {
             </button>
           </div>
 
-          {step === "details" ? (
-            <form onSubmit={sendOtp} className="space-y-4">
-              {mode === "signup" && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="fullName"
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your full name"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="area">Area *</Label>
-                    <select
-                      id="area"
-                      value={area}
-                      onChange={(e) => setArea(e.target.value as (typeof CHENNAI_AREAS)[number])}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      required
-                    >
-                      {CHENNAI_AREAS.map((place) => (
-                        <option key={place} value={place}>
-                          {place}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="gender">Gender *</Label>
-                    <select
-                      id="gender"
-                      value={gender}
-                      onChange={(e) => setGender(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                      required
-                    >
-                      <option value="female">Female</option>
-                      <option value="male">Male</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                </>
-              )}
-
+          {mode === "signin" ? (
+            <form onSubmit={handleSignIn} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
+                <Label htmlFor="signinEmail">Email *</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="email"
+                    id="signinEmail"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signinPassword">Password *</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="signinPassword"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Your password"
                     className="pl-10"
                     required
                   />
@@ -231,25 +277,135 @@ const Auth = () => {
                   <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
-                    Send OTP
+                    Sign In
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+          ) : signupStep === "details" ? (
+            <form onSubmit={sendSignupOtp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name *</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Your full name"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="area">Area *</Label>
+                <select
+                  id="area"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value as (typeof CHENNAI_AREAS)[number])}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                >
+                  {CHENNAI_AREAS.map((place) => (
+                    <option key={place} value={place}>
+                      {place}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender *</Label>
+                <select
+                  id="gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  required
+                >
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signupEmail">Email *</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="signupEmail"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signupPassword">Password *</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="signupPassword"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                    className="pl-10"
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter your password"
+                    className="pl-10"
+                    required
+                    minLength={MIN_PASSWORD_LENGTH}
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Send Signup OTP
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
               </Button>
             </form>
           ) : (
-            <form onSubmit={verifyOtp} className="space-y-4">
+            <form onSubmit={verifySignupOtp} className="space-y-4">
               <div className="space-y-2">
-                <Label>Enter OTP *</Label>
+                <Label>Enter Signup OTP *</Label>
                 <p className="text-xs text-muted-foreground">
-                  We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>
+                  Enter the 6-digit code sent to <span className="text-foreground font-medium">{normalizedEmail}</span>
                 </p>
-                <InputOTP
-                  maxLength={6}
-                  value={otp}
-                  onChange={(value) => setOtp(value)}
-                  containerClassName="justify-center"
-                >
+                <InputOTP maxLength={6} value={otp} onChange={(value) => setOtp(value)} containerClassName="justify-center">
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
                     <InputOTPSlot index={1} />
@@ -269,7 +425,7 @@ const Auth = () => {
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  "Verify OTP"
+                  "Verify OTP & Create Account"
                 )}
               </Button>
 
@@ -277,7 +433,7 @@ const Auth = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setStep("details");
+                    setSignupStep("details");
                     setOtp("");
                   }}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -286,7 +442,7 @@ const Auth = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => sendOtp()}
+                  onClick={() => sendSignupOtp()}
                   className="text-primary hover:opacity-80 transition-opacity"
                   disabled={loading}
                 >
@@ -297,7 +453,7 @@ const Auth = () => {
           )}
 
           <p className="text-center text-xs text-muted-foreground mt-4 leading-relaxed">
-            Google sign-in has been removed. This app now uses manual OTP verification only.
+            Sign in uses password. OTP is only used during signup verification.
           </p>
         </div>
       </div>
