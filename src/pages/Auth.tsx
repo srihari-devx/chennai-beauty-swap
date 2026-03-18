@@ -2,103 +2,120 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { CHENNAI_AREAS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { Mail, User, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import { Mail, Lock, User, ArrowRight } from "lucide-react";
+
+type AuthMode = "signin" | "signup";
+type AuthStep = "details" | "otp";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
 
-  // Form fields
+  const [mode, setMode] = useState<AuthMode>("signin");
+  const [step, setStep] = useState<AuthStep>("details");
+  const [loading, setLoading] = useState(false);
+
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [area, setArea] = useState<(typeof CHENNAI_AREAS)[number]>("Other");
+  const [gender, setGender] = useState("female");
+  const [otp, setOtp] = useState("");
 
   useEffect(() => {
     if (user) navigate("/");
-  }, [user]);
+  }, [user, navigate]);
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName.trim()) {
+  const resetForModeChange = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setStep("details");
+    setOtp("");
+  };
+
+  const sendOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    if (!email.trim()) {
+      toast.error("Please enter your email.");
+      return;
+    }
+
+    if (mode === "signup" && !fullName.trim()) {
       toast.error("Please enter your full name.");
       return;
     }
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters.");
-      return;
-    }
+
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: {
-        data: { full_name: fullName },
+        shouldCreateUser: mode === "signup",
         emailRedirectTo: window.location.origin,
+        data:
+          mode === "signup"
+            ? {
+                full_name: fullName.trim(),
+                area,
+                gender,
+              }
+            : undefined,
       },
     });
     setLoading(false);
+
     if (error) {
       toast.error(error.message);
-    } else {
-      setShowVerification(true);
+      return;
     }
+
+    setStep("otp");
+    toast.success("OTP sent. Please check your email inbox.");
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const verifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    setLoading(false);
-    if (error) {
-      if (error.message.includes("Email not confirmed")) {
-        toast.error("Please verify your email before signing in. Check your inbox.");
-      } else {
-        toast.error(error.message);
-      }
-    }
-  };
 
-  if (showVerification) {
-    return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="bg-card rounded-2xl border border-border shadow-beauty p-8 text-center animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="font-display text-xl font-bold text-foreground mb-2">
-              Check your email
-            </h2>
-            <p className="text-muted-foreground text-sm mb-6">
-              We've sent a verification link to <strong className="text-foreground">{email}</strong>. 
-              Click the link to verify your account, then come back and sign in.
-            </p>
-            <Button
-              onClick={() => {
-                setShowVerification(false);
-                setIsLogin(true);
-                setPassword("");
-              }}
-              variant="outline"
-              className="w-full"
-            >
-              Back to Sign In
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+    if (otp.length !== 6) {
+      toast.error("Enter the 6-digit OTP.");
+      return;
+    }
+
+    setLoading(true);
+
+    const verificationTypes = mode === "signup" ? (["signup", "email"] as const) : (["email", "magiclink"] as const);
+    let lastError: Error | null = null;
+    let verified = false;
+
+    for (const type of verificationTypes) {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type,
+      });
+
+      if (!error) {
+        verified = true;
+        break;
+      }
+
+      lastError = error;
+    }
+
+    setLoading(false);
+
+    if (!verified) {
+      toast.error(lastError?.message ?? "Invalid OTP. Please try again.");
+      return;
+    }
+
+    toast.success(mode === "signup" ? "Account created successfully!" : "Signed in successfully!");
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen gradient-hero flex items-center justify-center p-4">
@@ -107,105 +124,180 @@ const Auth = () => {
           <div className="w-16 h-16 rounded-full gradient-cta flex items-center justify-center shadow-beauty mx-auto mb-4 text-3xl">
             ✿
           </div>
-          <h1 className="font-display text-2xl font-bold text-foreground mb-1">
-            Chennai Beauty Swap
-          </h1>
+          <h1 className="font-display text-2xl font-bold text-foreground mb-1">Chennai Beauty Swap</h1>
           <p className="text-muted-foreground text-sm">
-            {isLogin ? "Welcome back!" : "Join Chennai's beauty community"}
+            {mode === "signup" ? "Create your account with OTP verification" : "Sign in with OTP verification"}
           </p>
         </div>
 
         <div className="bg-card rounded-2xl border border-border shadow-beauty p-6 animate-fade-in">
-          {/* Tab switcher */}
           <div className="flex rounded-xl bg-muted p-1 mb-6">
             <button
-              onClick={() => setIsLogin(true)}
+              type="button"
+              onClick={() => resetForModeChange("signin")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isLogin ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                mode === "signin" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
               Sign In
             </button>
             <button
-              onClick={() => setIsLogin(false)}
+              type="button"
+              onClick={() => resetForModeChange("signup")}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                !isLogin ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                mode === "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
               }`}
             >
               Sign Up
             </button>
           </div>
 
-          <form onSubmit={isLogin ? handleSignIn : handleSignUp} className="space-y-4">
-            {!isLogin && (
+          {step === "details" ? (
+            <form onSubmit={sendOtp} className="space-y-4">
+              {mode === "signup" && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name *</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Your full name"
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="area">Area *</Label>
+                    <select
+                      id="area"
+                      value={area}
+                      onChange={(e) => setArea(e.target.value as (typeof CHENNAI_AREAS)[number])}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      required
+                    >
+                      {CHENNAI_AREAS.map((place) => (
+                        <option key={place} value={place}>
+                          {place}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender *</Label>
+                    <select
+                      id="gender"
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      required
+                    >
+                      <option value="female">Female</option>
+                      <option value="male">Male</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
+                <Label htmlFor="email">Email *</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="fullName"
-                    type="text"
-                    placeholder="Your full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
                     className="pl-10"
                     required
                   />
                 </div>
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Send OTP
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={verifyOtp} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Enter OTP *</Label>
+                <p className="text-xs text-muted-foreground">
+                  We sent a 6-digit code to <span className="text-foreground font-medium">{email}</span>
+                </p>
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={(value) => setOtp(value)}
+                  containerClassName="justify-center"
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder={isLogin ? "Your password" : "Min 6 characters"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                  minLength={6}
-                />
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  "Verify OTP"
+                )}
+              </Button>
+
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("details");
+                    setOtp("");
+                  }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Change details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => sendOtp()}
+                  className="text-primary hover:opacity-80 transition-opacity"
+                  disabled={loading}
+                >
+                  Resend OTP
+                </button>
               </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  {isLogin ? "Sign In" : "Create Account"}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-          </form>
+            </form>
+          )}
 
           <p className="text-center text-xs text-muted-foreground mt-4 leading-relaxed">
-            By joining, you agree to meet sellers only in public places and use the platform responsibly.
+            Google sign-in has been removed. This app now uses manual OTP verification only.
           </p>
         </div>
       </div>
