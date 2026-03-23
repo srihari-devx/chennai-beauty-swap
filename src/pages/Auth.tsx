@@ -90,7 +90,7 @@ const Auth = () => {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: normalizedEmail,
       password,
       options: {
@@ -110,6 +110,12 @@ const Auth = () => {
       } else {
         toast.error(error.message);
       }
+      return;
+    }
+
+    // Supabase returns a user with no identities if the email is already registered
+    if (data?.user && data.user.identities && data.user.identities.length === 0) {
+      toast.error("This email is already registered. Please sign in instead.");
       return;
     }
 
