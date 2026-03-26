@@ -40,6 +40,11 @@ const App = () => (
                       <Sell />
                     </ProtectedRoute>
                   } />
+                  <Route path="/edit/:id" element={
+                    <ProtectedRoute>
+                      <Sell />
+                    </ProtectedRoute>
+                  } />
                   <Route path="/chats" element={
                     <ProtectedRoute>
                       <ChatList />

@@ -27,7 +27,7 @@ interface Message {
 
 const ChatWindow = () => {
   const { chatId } = useParams();
-  const { user } = useAuth();
+  const { user, profile: myProfile } = useAuth();
   const navigate = useNavigate();
   const [chat, setChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -91,11 +91,23 @@ const ChatWindow = () => {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !user || !chatId) return;
+    if (!input.trim() || !user || !chatId || !chat) return;
     setSending(true);
     const content = input.trim();
     setInput("");
     await supabase.from("messages").insert({ chat_id: chatId, sender_id: user.id, content });
+
+    // Send notification to the other user
+    const recipientId = chat.buyer_id === user.id ? chat.seller_id : chat.buyer_id;
+    const senderName = myProfile?.full_name || "Someone";
+    supabase.from("notifications").insert({
+      user_id: recipientId,
+      type: "message",
+      title: `New message from ${senderName}`,
+      message: content.length > 100 ? content.substring(0, 100) + "..." : content,
+      related_id: chatId,
+    }).then(() => {}); // fire and forget
+
     setSending(false);
   };
 

@@ -39,6 +39,7 @@ const Admin = () => {
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins">("overview");
   const [loading, setLoading] = useState(true);
+  const [managingUserId, setManagingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) { navigate("/"); return; }
@@ -141,6 +142,63 @@ const Admin = () => {
     });
     setAdmins(adminsWithProfiles);
     setLoading(false);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this user and all their data?")) return;
+    
+    setManagingUserId(userId);
+    try {
+      // Get user's product IDs first (needed for cascading deletes)
+      const { data: userProducts } = await supabase
+        .from("products")
+        .select("id")
+        .eq("seller_id", userId);
+      const productIds = (userProducts || []).map(p => p.id);
+
+      // Delete related data in correct order
+      if (productIds.length > 0) {
+        await supabase.from("product_views").delete().in("product_id", productIds);
+        await supabase.from("product_reports").delete().in("product_id", productIds);
+        await supabase.from("wishlists").delete().in("product_id", productIds);
+        // Delete chats & messages for user's products
+        const { data: chats } = await supabase.from("chats").select("id").in("product_id", productIds);
+        const chatIds = (chats || []).map(c => c.id);
+        if (chatIds.length > 0) {
+          await supabase.from("messages").delete().in("chat_id", chatIds);
+        }
+        await supabase.from("chats").delete().in("product_id", productIds);
+        await supabase.from("products").delete().eq("seller_id", userId);
+      }
+
+      // Delete user's own chats as buyer
+      const { data: buyerChats } = await supabase.from("chats").select("id").eq("buyer_id", userId);
+      const buyerChatIds = (buyerChats || []).map(c => c.id);
+      if (buyerChatIds.length > 0) {
+        await supabase.from("messages").delete().in("chat_id", buyerChatIds);
+        await supabase.from("chats").delete().eq("buyer_id", userId);
+      }
+
+      // Delete remaining user-specific data
+      await supabase.from("wishlists").delete().eq("user_id", userId);
+      await supabase.from("notifications").delete().eq("user_id", userId);
+      await supabase.from("ratings").delete().eq("rater_id", userId);
+      await supabase.from("ratings").delete().eq("seller_id", userId);
+      await supabase.from("seller_badges").delete().eq("user_id", userId);
+      await supabase.from("user_roles").delete().eq("user_id", userId);
+
+      // Finally delete the profile
+      const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
+      if (error) throw error;
+
+      setUsers(u => u.filter(user => user.user_id !== userId));
+      setStats(s => ({ ...s, users: s.users - 1 }));
+      toast.success("User and all their data deleted successfully");
+    } catch (error: any) {
+      toast.error("Failed to delete user: " + (error.message || "Unknown error"));
+    } finally {
+      setManagingUserId(null);
+    }
   };
 
   const deleteProduct = async (id: string) => {
@@ -378,6 +436,7 @@ const Admin = () => {
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Area</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -393,6 +452,20 @@ const Admin = () => {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{u.area}</td>
                           <td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString("en-IN")}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteUser(u.user_id)}
+                                disabled={managingUserId === u.user_id}
+                                className="h-7 px-2.5 text-xs rounded-lg gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                {managingUserId === u.user_id ? "Deleting..." : "Delete"}
+                              </Button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

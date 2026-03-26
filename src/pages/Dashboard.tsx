@@ -193,9 +193,9 @@ const Dashboard = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => navigate(`/product/${product.id}`)}
+                          onClick={() => navigate(`/edit/${product.id}`)}
                           className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
-                          title="View"
+                          title="Edit"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
