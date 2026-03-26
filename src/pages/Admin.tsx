@@ -39,7 +39,6 @@ const Admin = () => {
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins">("overview");
   const [loading, setLoading] = useState(true);
-  const [managingUserId, setManagingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) { navigate("/"); return; }
@@ -142,32 +141,6 @@ const Admin = () => {
     });
     setAdmins(adminsWithProfiles);
     setLoading(false);
-  };
-
-  const handleManageUser = async (userId: string, action: "delete" | "block" | "unblock") => {
-    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
-    
-    setManagingUserId(userId);
-    try {
-      const res = await supabase.functions.invoke("manage-user", {
-        body: { userId, action },
-      });
-      
-      if (res.error) {
-        toast.error(`Failed to ${action} user: ` + res.error.message);
-      } else if (res.data?.error) {
-        toast.error(res.data.error);
-      } else {
-        toast.success(`User ${action}ed successfully`);
-        if (action === "delete") {
-          setUsers(u => u.filter(user => user.user_id !== userId));
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || `Failed to ${action} user`);
-    } finally {
-      setManagingUserId(null);
-    }
   };
 
   const deleteProduct = async (id: string) => {
@@ -405,7 +378,6 @@ const Admin = () => {
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Area</th>
                         <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -421,28 +393,6 @@ const Admin = () => {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{u.area}</td>
                           <td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString("en-IN")}</td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleManageUser(u.user_id, "block")}
-                                disabled={managingUserId === u.user_id}
-                                className="h-7 px-2 text-xs rounded-lg"
-                              >
-                                {managingUserId === u.user_id ? "..." : "Block"}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleManageUser(u.user_id, "delete")}
-                                disabled={managingUserId === u.user_id}
-                                className="h-7 px-2 text-xs rounded-lg"
-                              >
-                                Delete
-                              </Button>
-                            </div>
-                          </td>
                         </tr>
                       ))}
                     </tbody>
