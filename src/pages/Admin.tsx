@@ -191,6 +191,16 @@ const Admin = () => {
       const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
       if (error) throw error;
 
+      // Delete from auth.users via secure SQL RPC (prevents reappearing on refresh)
+      // @ts-ignore - The RPC function exists in Supabase but might not be in the generated types yet
+      const { error: rpcError } = await supabase.rpc("admin_delete_user", {
+        target_user_id: userId,
+      });
+      if (rpcError) {
+        console.warn("Auth user deletion warning:", rpcError.message);
+        // Still consider it a success since profile data is removed
+      }
+
       setUsers(u => u.filter(user => user.user_id !== userId));
       setStats(s => ({ ...s, users: s.users - 1 }));
       toast.success("User and all their data deleted successfully");

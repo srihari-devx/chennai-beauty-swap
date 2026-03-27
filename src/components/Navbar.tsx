@@ -7,7 +7,7 @@ import NotificationBell from "@/components/NotificationBell";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const Navbar = () => {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -100,6 +100,17 @@ const Navbar = () => {
 
           {user && <NotificationBell />}
 
+          {user && profile && (
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-7 h-7 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
+                {profile.full_name?.[0]?.toUpperCase()}
+              </div>
+              <span className="text-sm font-medium text-foreground max-w-[120px] truncate">
+                Hi, {profile.full_name?.split(' ')[0]}
+              </span>
+            </div>
+          )}
+
           {user ? (
             <>
               <Button size="sm" asChild className="gradient-cta text-primary-foreground border-0 shadow-sm">
@@ -140,6 +151,17 @@ const Navbar = () => {
           </Link>
           {user ? (
             <>
+              {profile && (
+                <div className="flex items-center gap-2 px-3 py-2.5 mb-1 border-b border-border">
+                  <div className="w-8 h-8 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
+                    {profile.full_name?.[0]?.toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">Hi, {profile.full_name?.split(' ')[0]}!</p>
+                    <p className="text-xs text-muted-foreground truncate">{profile.area}</p>
+                  </div>
+                </div>
+              )}
               <Link to="/sell" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                 <Plus className="w-4 h-4" /> Sell Product
               </Link>

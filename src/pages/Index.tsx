@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight } from "lucide-react";
+import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, Mail } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ const Index = () => {
   const [recentProducts, setRecentProducts] = useState<any[]>([]);
   const [nearbyProducts, setNearbyProducts] = useState<any[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
+  const [showEmail, setShowEmail] = useState(false);
 
   useEffect(() => {
     const fetchRecent = async () => {
@@ -103,10 +104,32 @@ const Index = () => {
           <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-lavender/60 blur-3xl" />
         </div>
         <div className="container max-w-3xl mx-auto relative z-10 animate-fade-in">
-          <div className="inline-flex items-center gap-2 bg-card/60 border border-primary/20 rounded-full px-4 py-1.5 text-sm text-primary font-medium mb-6 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            Chennai's #1 Beauty Marketplace
-          </div>
+          {user && profile ? (
+            <div className="mb-6 flex flex-col items-center gap-2">
+              <button
+                onClick={() => setShowEmail((v) => !v)}
+                className="inline-flex items-center gap-2 bg-card/70 border border-primary/20 rounded-full px-5 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
+              >
+                <div className="w-6 h-6 rounded-full gradient-cta flex items-center justify-center text-white text-[10px] font-bold">
+                  {profile.full_name?.[0]?.toUpperCase()}
+                </div>
+                <span className="text-foreground">
+                  Welcome back, <strong>{profile.full_name?.split(' ')[0]}</strong>! ✨
+                </span>
+              </button>
+              {showEmail && (
+                <div className="inline-flex items-center gap-1.5 bg-card/80 border border-border rounded-full px-4 py-1.5 text-xs text-muted-foreground shadow-sm animate-fade-in">
+                  <Mail className="w-3 h-3" />
+                  {user.email}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 bg-card/60 border border-primary/20 rounded-full px-4 py-1.5 text-sm text-primary font-medium mb-6 shadow-sm">
+              <Sparkles className="w-3.5 h-3.5" />
+              Chennai's #1 Beauty Marketplace
+            </div>
+          )}
           <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
             Rescue Beauty Products.{" "}
             <span className="text-gradient">Save Money.</span>{" "}
