@@ -35,7 +35,21 @@ const Browse = () => {
     if (condition) query = query.eq("condition", condition as any);
     if (area) query = query.eq("area", area as any);
     query = query.gte("selling_price", priceRange[0]).lte("selling_price", priceRange[1]);
-    if (term) query = query.or(`name.ilike.%${term}%,brand.ilike.%${term}%,category.ilike.%${term}%`);
+    if (term) {
+      // Split term into individual words
+      const words = term.trim().split(/\s+/).filter(Boolean);
+      if (words.length > 0) {
+        // Create an OR condition for EVERY word across multiple fields
+        // e.g. "Lakme foundation" -> name.ilike.%Lakme%, brand.ilike.%Lakme%, name.ilike.%foundation% ...
+        const orConditions = words.flatMap(w => [
+          `name.ilike.%${w}%`,
+          `brand.ilike.%${w}%`,
+          `category.ilike.%${w}%`,
+          `description.ilike.%${w}%`
+        ]).join(',');
+        query = query.or(orConditions);
+      }
+    }
 
     const { data } = await query;
     const results = data || [];
