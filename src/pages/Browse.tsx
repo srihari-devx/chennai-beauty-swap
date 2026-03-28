@@ -44,7 +44,6 @@ const Browse = () => {
         const orConditions = words.flatMap(w => [
           `name.ilike.%${w}%`,
           `brand.ilike.%${w}%`,
-          `category.ilike.%${w}%`,
           `reason_for_selling.ilike.%${w}%`
         ]).join(',');
         query = query.or(orConditions);
