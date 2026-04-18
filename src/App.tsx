@@ -15,6 +15,8 @@ import Sell from "./pages/Sell";
 import { ChatList, ChatWindow } from "./pages/Chat";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import TermsOfService from "./pages/TermsOfService";
+import Articles from "./pages/Articles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +67,8 @@ const App = () => (
                       <Admin />
                     </ProtectedRoute>
                   } />
+                  <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/articles" element={<Articles />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

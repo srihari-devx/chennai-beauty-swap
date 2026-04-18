@@ -320,7 +320,8 @@ const Index = () => {
       {/* DISCLAIMER */}
       <div className="bg-muted/50 border-t border-border px-4 py-4 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-          ⚠️ <strong>Disclaimer:</strong> This platform only connects buyers and sellers. We are not responsible for product authenticity, allergic reactions, or transaction disputes. Meet only in public places. By using Chennai Beauty Swap, you agree to our terms of service.
+          ⚠️ <strong>Disclaimer:</strong> This platform only connects buyers and sellers. We are not responsible for product authenticity, allergic reactions, or transaction disputes. Meet only in public places. By using Chennai Beauty Swap, you agree to our{" "}
+          <Link to="/terms" className="text-primary hover:underline font-medium">terms of service</Link>.
         </p>
       </div>
     </div>

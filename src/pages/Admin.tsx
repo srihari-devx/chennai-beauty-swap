@@ -8,12 +8,26 @@ import {
 } from "recharts";
 import {
   Users, Package, CheckCircle, TrendingUp, ShieldAlert,
-  Clock, Trophy, UserPlus, Trash2, Activity
+  Clock, Trophy, UserPlus, Trash2, Activity, Newspaper, Plus, Edit, Eye, EyeOff
 } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+
+interface ArticleRow {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  category: string | null;
+  cover_image_url: string | null;
+  is_published: boolean;
+  author_id: string;
+  created_at: string;
+  updated_at: string;
+}
 
 const COLORS = ["#e07ea0", "#b392d8", "#f4b8ce", "#8ecadf", "#f9d78e", "#7dc98e", "#f4956b", "#8fbff7"];
 
@@ -37,9 +51,16 @@ const Admin = () => {
   const [admins, setAdmins] = useState<any[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [addingAdmin, setAddingAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins" | "articles">("overview");
   const [loading, setLoading] = useState(true);
   const [managingUserId, setManagingUserId] = useState<string | null>(null);
+
+  // Articles state
+  const [articlesList, setArticlesList] = useState<ArticleRow[]>([]);
+  const [articleForm, setArticleForm] = useState({ title: "", content: "", excerpt: "", category: "general", cover_image_url: "", is_published: false });
+  const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
+  const [savingArticle, setSavingArticle] = useState(false);
+  const [showArticleForm, setShowArticleForm] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) { navigate("/"); return; }
@@ -141,6 +162,14 @@ const Admin = () => {
       return { ...a, profile };
     });
     setAdmins(adminsWithProfiles);
+
+    // Articles
+    const { data: articlesData } = await (supabase as any)
+      .from("articles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setArticlesList((articlesData as ArticleRow[]) || []);
+
     setLoading(false);
   };
 
@@ -257,7 +286,88 @@ const Admin = () => {
     { label: "Avg Time to Sell", value: avgTimeToSell, icon: Clock, color: "text-amber-500" },
   ];
 
-  const tabs = ["overview", "analytics", "users", "products", "reports", "admins"] as const;
+  const tabs = ["overview", "analytics", "users", "products", "reports", "admins", "articles"] as const;
+
+  const ARTICLE_CATEGORIES = [
+    { value: "general", label: "General" },
+    { value: "beauty-tips", label: "Beauty Tips" },
+    { value: "platform-updates", label: "Platform Updates" },
+    { value: "safety", label: "Safety" },
+    { value: "announcements", label: "Announcements" },
+  ];
+
+  const resetArticleForm = () => {
+    setArticleForm({ title: "", content: "", excerpt: "", category: "general", cover_image_url: "", is_published: false });
+    setEditingArticleId(null);
+    setShowArticleForm(false);
+  };
+
+  const handleSaveArticle = async () => {
+    if (!articleForm.title.trim() || !articleForm.content.trim()) {
+      toast.error("Title and content are required.");
+      return;
+    }
+    setSavingArticle(true);
+    const payload = {
+      title: articleForm.title.trim(),
+      content: articleForm.content.trim(),
+      excerpt: articleForm.excerpt.trim() || null,
+      category: articleForm.category,
+      cover_image_url: articleForm.cover_image_url.trim() || null,
+      is_published: articleForm.is_published,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (editingArticleId) {
+      const { error } = await (supabase as any).from("articles").update(payload).eq("id", editingArticleId);
+      if (error) { toast.error("Failed to update article"); }
+      else {
+        toast.success("Article updated!");
+        setArticlesList(prev => prev.map(a => a.id === editingArticleId ? { ...a, ...payload } : a));
+        resetArticleForm();
+      }
+    } else {
+      const { data, error } = await (supabase as any).from("articles").insert({ ...payload, author_id: (await supabase.auth.getUser()).data.user?.id }).select().single();
+      if (error) { toast.error("Failed to create article: " + error.message); }
+      else {
+        toast.success("Article created!");
+        setArticlesList(prev => [data as ArticleRow, ...prev]);
+        resetArticleForm();
+      }
+    }
+    setSavingArticle(false);
+  };
+
+  const handleDeleteArticle = async (id: string) => {
+    if (!confirm("Delete this article?")) return;
+    const { error } = await (supabase as any).from("articles").delete().eq("id", id);
+    if (!error) {
+      setArticlesList(prev => prev.filter(a => a.id !== id));
+      toast.success("Article deleted");
+    }
+  };
+
+  const handleEditArticle = (article: ArticleRow) => {
+    setArticleForm({
+      title: article.title,
+      content: article.content,
+      excerpt: article.excerpt || "",
+      category: article.category || "general",
+      cover_image_url: article.cover_image_url || "",
+      is_published: article.is_published,
+    });
+    setEditingArticleId(article.id);
+    setShowArticleForm(true);
+  };
+
+  const togglePublish = async (article: ArticleRow) => {
+    const newStatus = !article.is_published;
+    const { error } = await (supabase as any).from("articles").update({ is_published: newStatus, updated_at: new Date().toISOString() }).eq("id", article.id);
+    if (!error) {
+      setArticlesList(prev => prev.map(a => a.id === article.id ? { ...a, is_published: newStatus } : a));
+      toast.success(newStatus ? "Article published!" : "Article unpublished");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -596,6 +706,149 @@ const Admin = () => {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* ─── ARTICLES TAB ─── */}
+            {activeTab === "articles" && (
+              <div className="space-y-6">
+                {/* Create / Edit Form Toggle */}
+                {!showArticleForm ? (
+                  <Button onClick={() => { resetArticleForm(); setShowArticleForm(true); }} className="gradient-cta text-primary-foreground border-0 gap-2">
+                    <Plus className="w-4 h-4" /> New Article
+                  </Button>
+                ) : (
+                  <div className="bg-card rounded-2xl border border-border shadow-card p-6">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2">
+                        <Newspaper className="w-4 h-4 text-primary" />
+                        <h3 className="font-semibold text-foreground">{editingArticleId ? "Edit Article" : "Create New Article"}</h3>
+                      </div>
+                      <button onClick={resetArticleForm} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="articleTitle">Title *</Label>
+                        <Input
+                          id="articleTitle"
+                          value={articleForm.title}
+                          onChange={e => setArticleForm(f => ({ ...f, title: e.target.value }))}
+                          placeholder="Article title"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="articleCategory">Category</Label>
+                          <select
+                            id="articleCategory"
+                            value={articleForm.category}
+                            onChange={e => setArticleForm(f => ({ ...f, category: e.target.value }))}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            {ARTICLE_CATEGORIES.map(c => (
+                              <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="articleCover">Cover Image URL</Label>
+                          <Input
+                            id="articleCover"
+                            value={articleForm.cover_image_url}
+                            onChange={e => setArticleForm(f => ({ ...f, cover_image_url: e.target.value }))}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="articleExcerpt">Excerpt (short summary)</Label>
+                        <Input
+                          id="articleExcerpt"
+                          value={articleForm.excerpt}
+                          onChange={e => setArticleForm(f => ({ ...f, excerpt: e.target.value }))}
+                          placeholder="Brief description shown in previews"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="articleContent">Content *</Label>
+                        <textarea
+                          id="articleContent"
+                          value={articleForm.content}
+                          onChange={e => setArticleForm(f => ({ ...f, content: e.target.value }))}
+                          placeholder="Write your article content here..."
+                          rows={10}
+                          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y"
+                        />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id="articlePublish"
+                          checked={articleForm.is_published}
+                          onChange={e => setArticleForm(f => ({ ...f, is_published: e.target.checked }))}
+                          className="w-4 h-4 rounded accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="articlePublish" className="text-sm text-foreground cursor-pointer">Publish immediately</label>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button onClick={handleSaveArticle} disabled={savingArticle} className="gradient-cta text-primary-foreground border-0">
+                          {savingArticle ? "Saving..." : editingArticleId ? "Update Article" : "Create Article"}
+                        </Button>
+                        <Button variant="outline" onClick={resetArticleForm}>Cancel</Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Articles List */}
+                {articlesList.length === 0 ? (
+                  <div className="text-center py-16 bg-card rounded-2xl border border-dashed border-border">
+                    <div className="text-4xl mb-3">📰</div>
+                    <p className="font-semibold text-foreground">No articles yet</p>
+                    <p className="text-muted-foreground text-sm">Create your first article above!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {articlesList.map(article => (
+                      <div key={article.id} className="bg-card rounded-2xl border border-border shadow-card p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
+                                article.is_published ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                              }`}>
+                                {article.is_published ? "Published" : "Draft"}
+                              </span>
+                              {article.category && (
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                  {article.category.replace("-", " ")}
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-semibold text-foreground truncate">{article.title}</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {new Date(article.created_at).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" })}
+                            </p>
+                            {article.excerpt && (
+                              <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{article.excerpt}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Button size="sm" variant="ghost" onClick={() => togglePublish(article)} className="h-8 px-2" title={article.is_published ? "Unpublish" : "Publish"}>
+                              {article.is_published ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleEditArticle(article)} className="h-8 px-2">
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteArticle(article.id)} className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>

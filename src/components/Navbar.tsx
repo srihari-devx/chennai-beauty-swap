@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, MessageCircle, User, LogOut, LayoutDashboard, Menu, X, Palette } from "lucide-react";
+import { ShoppingBag, Plus, MessageCircle, User, LogOut, LayoutDashboard, Menu, X, Palette, Newspaper } from "lucide-react";
 import { useState } from "react";
 import NotificationBell from "@/components/NotificationBell";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -46,6 +46,14 @@ const Navbar = () => {
             }`}
           >
             Browse
+          </Link>
+          <Link
+            to="/articles"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isActive("/articles") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            Articles
           </Link>
           {user && (
             <>
@@ -148,6 +156,9 @@ const Navbar = () => {
         <div className="md:hidden border-t border-border bg-card/95 backdrop-blur-md px-4 py-3 space-y-1">
           <Link to="/browse" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
             <ShoppingBag className="w-4 h-4" /> Browse Products
+          </Link>
+          <Link to="/articles" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <Newspaper className="w-4 h-4" /> Articles
           </Link>
           {user ? (
             <>

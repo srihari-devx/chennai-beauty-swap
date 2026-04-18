@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CHENNAI_AREAS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, User, ArrowRight, Lock, MapPin, Users } from "lucide-react";
+import { Mail, User, ArrowRight, Lock, MapPin, Users, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
@@ -30,6 +30,9 @@ const Auth = () => {
   const [area, setArea] = useState<string>("Other");
   const [gender, setGender] = useState("female");
 
+  // TOS acceptance
+  const [tosAccepted, setTosAccepted] = useState(false);
+
   // Post-signup state
   const [signupDone, setSignupDone] = useState(false);
 
@@ -47,6 +50,10 @@ const Auth = () => {
 
   /* ───────── GOOGLE SIGN IN ───────── */
   const handleGoogleSignIn = async () => {
+    if (!tosAccepted) {
+      toast.error("You must accept the Terms of Service before signing in.");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -65,6 +72,7 @@ const Auth = () => {
   const handleSignIn = async (e: FormEvent) => {
     e.preventDefault();
 
+    if (!tosAccepted) { toast.error("You must accept the Terms of Service before signing in."); return; }
     if (!normalizedEmail) { toast.error("Please enter your email."); return; }
     if (!password) { toast.error("Please enter your password."); return; }
 
@@ -94,6 +102,7 @@ const Auth = () => {
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
 
+    if (!tosAccepted) { toast.error("You must accept the Terms of Service before creating an account."); return; }
     if (!fullName.trim()) { toast.error("Please enter your full name."); return; }
     if (!normalizedEmail) { toast.error("Please enter your email."); return; }
     if (password.length < MIN_PASSWORD_LENGTH) {
@@ -225,13 +234,31 @@ const Auth = () => {
                 </button>
               </div>
 
+              {/* Terms of Service Checkbox */}
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border border-border">
+                <input
+                  type="checkbox"
+                  id="tosAccept"
+                  checked={tosAccepted}
+                  onChange={(e) => setTosAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-primary text-primary focus:ring-primary cursor-pointer accent-primary"
+                />
+                <label htmlFor="tosAccept" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                  I have read and agree to the{" "}
+                  <Link to="/terms" target="_blank" className="text-primary font-medium hover:underline inline-flex items-center gap-0.5">
+                    <ScrollText className="w-3 h-3" />
+                    Terms of Service
+                  </Link>
+                </label>
+              </div>
+
               {/* Google Auth Button */}
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="w-full h-12 rounded-xl text-base font-medium relative hover:bg-muted/50 transition-colors border-2"
+                disabled={loading || !tosAccepted}
+                className={`w-full h-12 rounded-xl text-base font-medium relative hover:bg-muted/50 transition-colors border-2 ${!tosAccepted ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
@@ -440,7 +467,7 @@ const Auth = () => {
           <p className="text-center text-xs text-muted-foreground mt-6 leading-relaxed bg-card/50 p-3 rounded-xl border border-border pb-safe">
             {mode === "signin"
               ? "Don't have an account? Switch to Sign Up above to get started."
-              : "By signing up, you agree to our terms. Make sure to complete your profile after signing in via Google so others know your area!"}
+              : <>By signing up, you agree to our <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>. Make sure to complete your profile after signing in via Google so others know your area!</>}
           </p>
         )}
       </div>
