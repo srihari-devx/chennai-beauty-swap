@@ -120,6 +120,10 @@ const Dashboard = () => {
           <div className="flex items-center gap-3 flex-wrap">
             <TrustScore score={trustScore} />
             <SellerBadges badges={sellerBadges} />
+            <Button variant="outline" size="sm" onClick={() => navigate("/profile/edit")} className="rounded-xl ml-auto border-border">
+              <Edit className="w-3.5 h-3.5 mr-2" />
+              Edit Profile
+            </Button>
           </div>
         </div>
 

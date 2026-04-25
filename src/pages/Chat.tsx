@@ -35,6 +35,7 @@ const ChatWindow = () => {
   const [sending, setSending] = useState(false);
   const [otherUser, setOtherUser] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     if (!chatId || !user) return;
@@ -72,17 +73,34 @@ const ChatWindow = () => {
 
     const channel = supabase
       .channel(`chat-${chatId}`)
+      .on("broadcast", { event: "new-message" }, (payload) => {
+        setMessages(prev => {
+          if (prev.some(m => m.id === payload.payload.id || (m.content === payload.payload.content && m.sender_id === payload.payload.sender_id && Math.abs(new Date(m.created_at).getTime() - new Date(payload.payload.created_at).getTime()) < 5000))) return prev;
+          return [...prev, payload.payload as Message];
+        });
+      })
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
         table: "messages",
         filter: `chat_id=eq.${chatId}`,
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message]);
+        setMessages(prev => {
+          // deduplicate if we already received it via broadcast or optimistic update
+          if (prev.some(m => m.content === payload.new.content && m.sender_id === payload.new.sender_id && Math.abs(new Date(m.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 5000)) {
+            return prev;
+          }
+          return [...prev, payload.new as Message];
+        });
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    channelRef.current = channel;
+
+    return () => { 
+      supabase.removeChannel(channel); 
+      channelRef.current = null;
+    };
   }, [chatId, user]);
 
   useEffect(() => {
@@ -95,7 +113,27 @@ const ChatWindow = () => {
     setSending(true);
     const content = input.trim();
     setInput("");
-    await supabase.from("messages").insert({ chat_id: chatId, sender_id: user.id, content });
+
+    // Optimistic update
+    const newMessage: Message = {
+      id: crypto.randomUUID(),
+      chat_id: chatId,
+      sender_id: user.id,
+      content,
+      created_at: new Date().toISOString(),
+    };
+    
+    setMessages(prev => [...prev, newMessage]);
+
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: "broadcast",
+        event: "new-message",
+        payload: newMessage
+      });
+    }
+
+    supabase.from("messages").insert({ chat_id: chatId, sender_id: user.id, content }).then(() => {});
 
     // Send notification to the other user
     const recipientId = chat.buyer_id === user.id ? chat.seller_id : chat.buyer_id;

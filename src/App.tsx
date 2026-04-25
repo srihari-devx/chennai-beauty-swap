@@ -17,6 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import TermsOfService from "./pages/TermsOfService";
 import Articles from "./pages/Articles";
+import EditProfile from "./pages/EditProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,11 @@ const App = () => (
                   <Route path="/dashboard" element={
                     <ProtectedRoute>
                       <Dashboard />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile/edit" element={
+                    <ProtectedRoute>
+                      <EditProfile />
                     </ProtectedRoute>
                   } />
                   <Route path="/cbs-admin" element={

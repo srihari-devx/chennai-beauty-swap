@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export interface Notification {
   id: string;
@@ -71,6 +72,23 @@ export const useNotifications = () => {
           const newNotif = payload.new as Notification;
           setNotifications(prev => [newNotif, ...prev].slice(0, 20));
           setUnreadCount(prev => prev + 1);
+
+          // In-app toast notification
+          if (newNotif.type === "message") {
+            toast(newNotif.title, {
+              description: newNotif.message,
+              action: {
+                label: "View",
+                onClick: () => {
+                  if (newNotif.related_id) {
+                    window.location.href = `/chats/${newNotif.related_id}`;
+                  }
+                }
+              }
+            });
+          } else {
+            toast.info(newNotif.title, { description: newNotif.message });
+          }
 
           // Trigger browser push notification
           showBrowserNotification(newNotif);
