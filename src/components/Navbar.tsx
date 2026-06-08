@@ -29,11 +29,8 @@ const Navbar = () => {
           <div className="w-8 h-8 rounded-full gradient-cta flex items-center justify-center shadow-sm">
             <span className="text-white text-sm">✿</span>
           </div>
-          <span className="font-display font-semibold text-lg text-foreground hidden sm:block">
-            Chennai Beauty Swap
-          </span>
-          <span className="font-display font-semibold text-lg text-foreground sm:hidden">
-            CBS
+          <span className="font-display font-semibold text-lg text-foreground">
+            Swaptics
           </span>
         </Link>
 

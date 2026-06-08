@@ -10,7 +10,7 @@ const sections = [
     id: 1,
     title: "Introduction",
     icon: ScrollText,
-    content: `Welcome to Chennai Beauty Swap.\n\nBy accessing or using our Platform, you agree to be bound by these Terms of Service. If you do not agree to these Terms, you must not use the Platform.`,
+    content: `Welcome to Swaptics.\n\nBy accessing or using our Platform, you agree to be bound by these Terms of Service. If you do not agree to these Terms, you must not use the Platform.`,
   },
   {
     id: 2,
@@ -70,7 +70,7 @@ const sections = [
     id: 11,
     title: "Intellectual Property",
     icon: Fingerprint,
-    content: `All content on the Platform, including logos, design, text, and branding, is the property of Chennai Beauty Swap and may not be used without prior written permission.`,
+    content: `All content on the Platform, including logos, design, text, and branding, is the property of Swaptics and may not be used without prior written permission.`,
   },
   {
     id: 12,
@@ -88,7 +88,7 @@ const sections = [
     id: 14,
     title: "Contact Information",
     icon: Mail,
-    content: `For questions or concerns regarding these Terms, please contact us at:\n\ncbs@gmail.com`,
+    content: `For questions or concerns regarding these Terms, please contact us at:\n\nswaptics.beauty.store@gmail.com`,
   },
 ];
 
@@ -110,7 +110,7 @@ const TermsOfService = () => {
             Terms of Service
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Please read these terms carefully before using Chennai Beauty Swap.
+            Please read these terms carefully before using Swaptics.
             By using our platform, you agree to these terms.
           </p>
           <p className="text-xs text-muted-foreground mt-4">

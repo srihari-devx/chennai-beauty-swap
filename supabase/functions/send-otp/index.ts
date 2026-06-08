@@ -20,7 +20,7 @@ async function sendEmail(to: string, otp: string, fullName: string) {
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "Chennai Beauty Swap <onboarding@resend.dev>",
+      from: "Swaptics <onboarding@resend.dev>",
       to: [to],
       subject: `Your verification code: ${otp}`,
       html: `
@@ -29,7 +29,7 @@ async function sendEmail(to: string, otp: string, fullName: string) {
             <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #ec4899, #f472b6); display: inline-flex; align-items: center; justify-content: center; font-size: 28px;">✿</div>
           </div>
           <h2 style="text-align: center; color: #1a1a2e; margin-bottom: 8px;">Verify Your Email</h2>
-          <p style="text-align: center; color: #6b7280; font-size: 14px;">Hi ${fullName}, use the code below to verify your account on Chennai Beauty Swap.</p>
+          <p style="text-align: center; color: #6b7280; font-size: 14px;">Hi ${fullName}, use the code below to verify your account on Swaptics.</p>
           <div style="text-align: center; margin: 28px 0;">
             <div style="display: inline-block; background: #f3f4f6; border-radius: 12px; padding: 16px 32px; letter-spacing: 8px; font-size: 32px; font-weight: 700; color: #1a1a2e;">${otp}</div>
           </div>

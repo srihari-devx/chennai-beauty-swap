@@ -1,20 +1,95 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, Mail } from "lucide-react";
+import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, Mail, Newspaper, Calendar, Tag } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
+import NewsletterSection from "@/components/NewsletterSection";
+import FeedbackForm from "@/components/FeedbackForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/hooks/useWishlist";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
+/* ─── Article type (matches DB) ─── */
+interface Article {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  category: string | null;
+  cover_image_url: string | null;
+  is_published: boolean;
+  created_at: string;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  "beauty-tips": "bg-pink-100 text-pink-700",
+  "platform-updates": "bg-blue-100 text-blue-700",
+  safety: "bg-amber-100 text-amber-700",
+  announcements: "bg-purple-100 text-purple-700",
+  general: "bg-gray-100 text-gray-700",
+};
+
+/* ─── Carousel Dots Indicator ─── */
+const CarouselDots = ({ api }: { api: CarouselApi | undefined }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+
+  const onSelect = useCallback(() => {
+    if (!api) return;
+    setSelectedIndex(api.selectedScrollSnap());
+  }, [api]);
+
+  useEffect(() => {
+    if (!api) return;
+    setScrollSnaps(api.scrollSnapList());
+    onSelect();
+    api.on("select", onSelect);
+    return () => { api.off("select", onSelect); };
+  }, [api, onSelect]);
+
+  if (scrollSnaps.length <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-1.5 mt-5">
+      {scrollSnaps.map((_, idx) => (
+        <button
+          key={idx}
+          onClick={() => api?.scrollTo(idx)}
+          className={`rounded-full transition-all duration-300 ${
+            idx === selectedIndex
+              ? "w-6 h-2 bg-primary"
+              : "w-2 h-2 bg-primary/25 hover:bg-primary/40"
+          }`}
+        />
+      ))}
+    </div>
+  );
+};
+
+/* ─── Main Page ─── */
 const Index = () => {
   const { user, profile } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [recentProducts, setRecentProducts] = useState<any[]>([]);
   const [nearbyProducts, setNearbyProducts] = useState<any[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
+  const [latestArticles, setLatestArticles] = useState<Article[]>([]);
   const [showEmail, setShowEmail] = useState(false);
+
+  /* Carousel APIs for dots */
+  const [trendingApi, setTrendingApi] = useState<CarouselApi>();
+  const [recentApi, setRecentApi] = useState<CarouselApi>();
+  const [nearbyApi, setNearbyApi] = useState<CarouselApi>();
+  const [articlesApi, setArticlesApi] = useState<CarouselApi>();
 
   useEffect(() => {
     const fetchRecent = async () => {
@@ -23,7 +98,7 @@ const Index = () => {
         .select("*")
         .eq("is_sold", false)
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(8);
       setRecentProducts(data || []);
     };
     fetchRecent();
@@ -39,16 +114,15 @@ const Index = () => {
         .eq("is_sold", false)
         .eq("area", profile.area as any)
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(8);
       setNearbyProducts(data || []);
     };
     fetchNearby();
   }, [profile?.area]);
 
-  // Trending products (most wishlisted - approximated by recent views)
+  // Trending products (most viewed in last 7 days)
   useEffect(() => {
     const fetchTrending = async () => {
-      // Get products with most views in last 7 days
       const { data: viewData } = await supabase
         .from("product_views")
         .select("product_id")
@@ -57,7 +131,7 @@ const Index = () => {
       if (viewData && viewData.length > 0) {
         const counts: Record<string, number> = {};
         viewData.forEach(v => { counts[v.product_id] = (counts[v.product_id] || 0) + 1; });
-        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
         const ids = sorted.map(s => s[0]);
 
         if (ids.length > 0) {
@@ -76,22 +150,64 @@ const Index = () => {
         .select("*")
         .eq("is_sold", false)
         .order("created_at", { ascending: false })
-        .limit(6);
+        .limit(8);
       setTrendingProducts(data || []);
     };
     fetchTrending();
   }, []);
 
-  const ProductGrid = ({ products }: { products: any[] }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4">
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          isWishlisted={isWishlisted(product.id)}
-          onToggleWishlist={toggleWishlist}
-        />
-      ))}
+  // Latest articles
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        const { data } = await (supabase as any)
+          .from("articles")
+          .select("*")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
+          .limit(5);
+        setLatestArticles((data as Article[]) || []);
+      } catch {
+        // articles table may not exist yet
+      }
+    };
+    fetchArticles();
+  }, []);
+
+  /* ─── Product Carousel ─── */
+  const ProductCarousel = ({
+    products,
+    setApi,
+    api,
+  }: {
+    products: any[];
+    setApi: (api: CarouselApi) => void;
+    api: CarouselApi | undefined;
+  }) => (
+    <div>
+      <Carousel
+        opts={{ align: "start", loop: true }}
+        setApi={setApi}
+        className="w-full"
+      >
+        <CarouselContent className="-ml-3">
+          {products.map((product) => (
+            <CarouselItem
+              key={product.id}
+              className="pl-3 basis-1/2 sm:basis-1/3 lg:basis-1/4"
+            >
+              <ProductCard
+                product={product}
+                isWishlisted={isWishlisted(product.id)}
+                onToggleWishlist={toggleWishlist}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="-left-3 md:-left-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
+        <CarouselNext className="-right-3 md:-right-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
+      </Carousel>
+      <CarouselDots api={api} />
     </div>
   );
 
@@ -212,7 +328,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* NEAR YOU */}
+      {/* NEAR YOU — CAROUSEL */}
       {user && nearbyProducts.length > 0 && (
         <section className="py-16 px-4 bg-card">
           <div className="container max-w-6xl mx-auto">
@@ -225,12 +341,12 @@ const Index = () => {
                 <Link to={`/browse?area=${profile?.area}`}>See All <ChevronRight className="w-4 h-4" /></Link>
               </Button>
             </div>
-            <ProductGrid products={nearbyProducts} />
+            <ProductCarousel products={nearbyProducts} setApi={setNearbyApi} api={nearbyApi} />
           </div>
         </section>
       )}
 
-      {/* TRENDING NOW */}
+      {/* TRENDING NOW — CAROUSEL */}
       {trendingProducts.length > 0 && (
         <section className={`py-16 px-4 ${user && nearbyProducts.length > 0 ? "gradient-hero" : "bg-card"}`}>
           <div className="container max-w-6xl mx-auto">
@@ -243,12 +359,12 @@ const Index = () => {
                 <Link to="/browse">See All <ChevronRight className="w-4 h-4" /></Link>
               </Button>
             </div>
-            <ProductGrid products={trendingProducts} />
+            <ProductCarousel products={trendingProducts} setApi={setTrendingApi} api={trendingApi} />
           </div>
         </section>
       )}
 
-      {/* RECENTLY ADDED */}
+      {/* RECENTLY ADDED — CAROUSEL */}
       <section className="py-16 px-4 bg-card">
         <div className="container max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
@@ -261,7 +377,7 @@ const Index = () => {
             </Button>
           </div>
           {recentProducts.length > 0 ? (
-            <ProductGrid products={recentProducts} />
+            <ProductCarousel products={recentProducts} setApi={setRecentApi} api={recentApi} />
           ) : (
             <div className="text-center py-16 bg-background rounded-2xl border border-dashed border-border">
               <div className="text-4xl mb-3">✨</div>
@@ -274,8 +390,87 @@ const Index = () => {
         </div>
       </section>
 
+      {/* LATEST ARTICLES — CAROUSEL */}
+      {latestArticles.length > 0 && (
+        <section className="py-16 px-4 gradient-hero">
+          <div className="container max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="font-display text-3xl font-bold text-foreground mb-1">📰 Latest Articles</h2>
+                <p className="text-muted-foreground">Tips, updates & beauty insights</p>
+              </div>
+              <Button variant="ghost" asChild className="flex items-center gap-1 text-primary">
+                <Link to="/articles">View All <ChevronRight className="w-4 h-4" /></Link>
+              </Button>
+            </div>
+            <Carousel
+              opts={{ align: "start", loop: true }}
+              setApi={setArticlesApi}
+              className="w-full"
+            >
+              <CarouselContent className="-ml-3">
+                {latestArticles.map((article) => (
+                  <CarouselItem
+                    key={article.id}
+                    className="pl-3 basis-full sm:basis-1/2 lg:basis-1/3"
+                  >
+                    <Link to="/articles" className="group block">
+                      <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden hover:shadow-beauty transition-all duration-300 group-hover:-translate-y-1 h-full flex flex-col">
+                        {/* Cover image */}
+                        {article.cover_image_url ? (
+                          <div className="w-full h-40 overflow-hidden bg-muted">
+                            <img
+                              src={article.cover_image_url}
+                              alt={article.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-full h-40 gradient-hero flex items-center justify-center">
+                            <Newspaper className="w-10 h-10 text-primary/30" />
+                          </div>
+                        )}
+                        <div className="p-4 flex-1 flex flex-col">
+                          {/* Meta */}
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            {article.category && (
+                              <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full ${
+                                CATEGORY_COLORS[article.category] || "bg-muted text-muted-foreground"
+                              }`}>
+                                <Tag className="w-2.5 h-2.5 inline mr-0.5" />
+                                {article.category.replace("-", " ")}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              <Calendar className="w-2.5 h-2.5" />
+                              {new Date(article.created_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                            </span>
+                          </div>
+                          <h3 className="font-display text-base font-semibold text-foreground mb-1.5 line-clamp-2 leading-snug">
+                            {article.title}
+                          </h3>
+                          <p className="text-muted-foreground text-xs leading-relaxed line-clamp-2 flex-1">
+                            {article.excerpt || article.content.slice(0, 120) + "..."}
+                          </p>
+                          <span className="mt-3 inline-flex items-center gap-1 text-primary text-xs font-medium group-hover:underline">
+                            Read More <ArrowRight className="w-3 h-3" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="-left-3 md:-left-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
+              <CarouselNext className="-right-3 md:-right-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
+            </Carousel>
+            <CarouselDots api={articlesApi} />
+          </div>
+        </section>
+      )}
+
       {/* SAFETY GUIDELINES */}
-      <section className="py-16 px-4 gradient-hero">
+      <section className="py-16 px-4 bg-card">
         <div className="container max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h2 className="font-display text-3xl font-bold text-foreground mb-2">Stay Safe ✨</h2>
@@ -288,7 +483,7 @@ const Index = () => {
               { icon: "📱", title: "Chat In-App Only", desc: "Keep all communication within the platform for your safety." },
               { icon: "⭐", title: "Rate Your Experience", desc: "Leave honest ratings to help others make informed decisions." },
             ].map((tip, i) => (
-              <div key={i} className="flex gap-4 p-5 rounded-2xl bg-card border border-border shadow-card">
+              <div key={i} className="flex gap-4 p-5 rounded-2xl bg-background border border-border shadow-card">
                 <span className="text-2xl flex-shrink-0 mt-0.5">{tip.icon}</span>
                 <div>
                   <h4 className="font-semibold text-foreground mb-1">{tip.title}</h4>
@@ -301,10 +496,10 @@ const Index = () => {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-4 bg-card">
+      <section className="py-20 px-4 gradient-hero">
         <div className="container max-w-2xl mx-auto text-center">
           <div className="p-10 rounded-3xl gradient-cta text-white shadow-beauty">
-            <h2 className="font-display text-3xl font-bold mb-3">Join Chennai Beauty Swap</h2>
+            <h2 className="font-display text-3xl font-bold mb-3">Join Swaptics</h2>
             <p className="text-white/80 mb-6 text-lg">
               Join thousands of Chennai beauty lovers buying and selling smart.
             </p>
@@ -317,10 +512,16 @@ const Index = () => {
         </div>
       </section>
 
+      {/* NEWSLETTER */}
+      <NewsletterSection />
+
+      {/* FEEDBACK */}
+      <FeedbackForm />
+
       {/* DISCLAIMER */}
       <div className="bg-muted/50 border-t border-border px-4 py-4 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-          ⚠️ <strong>Disclaimer:</strong> This platform only connects buyers and sellers. We are not responsible for product authenticity, allergic reactions, or transaction disputes. Meet only in public places. By using Chennai Beauty Swap, you agree to our{" "}
+          ⚠️ <strong>Disclaimer:</strong> This platform only connects buyers and sellers. We are not responsible for product authenticity, allergic reactions, or transaction disputes. Meet only in public places. By using Swaptics, you agree to our{" "}
           <Link to="/terms" className="text-primary hover:underline font-medium">terms of service</Link>.
         </p>
       </div>

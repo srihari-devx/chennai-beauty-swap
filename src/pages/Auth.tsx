@@ -31,7 +31,7 @@ const Auth = () => {
   const [gender, setGender] = useState("female");
 
   // TOS acceptance
-  const [tosAccepted, setTosAccepted] = useState(false);
+  const [tosAccepted, setTosAccepted] = useState(true);
 
   // Post-signup state
   const [signupDone, setSignupDone] = useState(false);
@@ -158,7 +158,7 @@ const Auth = () => {
             ✿
           </div>
           <h1 className="font-display text-2xl font-bold text-foreground mb-1">
-            Chennai Beauty Swap
+            Swaptics
           </h1>
           <p className="text-muted-foreground text-sm">
             {signupDone

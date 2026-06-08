@@ -1,4 +1,4 @@
-# Chennai Beauty Swap
+# Swaptics
 
 A beauty product swap platform for Chennai, built with modern web technologies.
 

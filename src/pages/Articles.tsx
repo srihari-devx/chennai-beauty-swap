@@ -92,7 +92,7 @@ const Articles = () => {
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             Stay informed with beauty tips, platform updates, and safety
-            guidelines from the Chennai Beauty Swap team.
+            guidelines from the Swaptics team.
           </p>
         </div>
       </section>
