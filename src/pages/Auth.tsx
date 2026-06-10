@@ -152,7 +152,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <img src="/Swaptics with Tagline.png" alt="Swaptics" className="h-28 mx-auto mb-4 object-contain" />
+          <img src="/Swaptics with Tagline.png" alt="Swaptics" className="h-40 mx-auto mb-4 object-contain" />
           <p className="text-muted-foreground text-sm">
             {signupDone
               ? "Check your email to verify your account"
