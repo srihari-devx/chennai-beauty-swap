@@ -24,12 +24,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-full gradient-cta flex items-center justify-center shadow-sm">
-            <span className="text-white text-sm">✿</span>
-          </div>
-          <span className="font-display font-semibold text-lg text-foreground">
-            Swaptics
-          </span>
+          <img src="/Swaptics Navbar.png" alt="Swaptics Logo" className="h-8 w-auto object-contain" />
         </Link>
 
         {/* Desktop Nav */}

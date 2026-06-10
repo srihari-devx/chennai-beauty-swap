@@ -152,12 +152,7 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="w-16 h-16 rounded-full gradient-cta flex items-center justify-center shadow-beauty mx-auto mb-4 text-3xl">
-            ✿
-          </div>
-          <h1 className="font-display text-2xl font-bold text-foreground mb-1">
-            Swaptics
-          </h1>
+          <img src="/Swaptics with Tagline.png" alt="Swaptics" className="h-20 mx-auto mb-4 object-contain" />
           <p className="text-muted-foreground text-sm">
             {signupDone
               ? "Check your email to verify your account"
