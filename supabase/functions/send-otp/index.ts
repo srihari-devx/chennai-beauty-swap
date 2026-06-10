@@ -1,12 +1,25 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  // L-1 fix: CORS restricted to specific origin instead of wildcard *
+  'Access-Control-Allow-Origin': Deno.env.get("ALLOWED_ORIGIN") || 'https://swaptics.vercel.app',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// C-3 + M-7 FIX: Cryptographically secure OTP generation
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return (100000 + (array[0] % 900000)).toString();
+}
+
+// C-3 FIX: Hash OTP with SHA-256 before storing
+async function hashOTP(otp: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(otp);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function sendEmail(to: string, otp: string, fullName: string) {
@@ -22,7 +35,7 @@ async function sendEmail(to: string, otp: string, fullName: string) {
     body: JSON.stringify({
       from: "Swaptics <onboarding@resend.dev>",
       to: [to],
-      subject: `Your verification code: ${otp}`,
+      subject: `Your verification code`,
       html: `
         <div style="font-family: 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
           <div style="text-align: center; margin-bottom: 24px;">
@@ -65,12 +78,14 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check OTP in database
+      // C-3 FIX: Compare hashed OTP
+      const hashedInput = await hashOTP(userOtp);
+
       const { data: otpRecord } = await supabase
         .from("otp_verifications")
         .select("*")
         .eq("email", email.toLowerCase())
-        .eq("otp", userOtp)
+        .eq("otp_hash", hashedInput)      // compare against stored hash
         .eq("verified", false)
         .gte("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false })
@@ -78,8 +93,22 @@ Deno.serve(async (req) => {
         .single();
 
       if (!otpRecord) {
+        // M-1 FIX: Increment failed attempts
+        await supabase
+          .from("otp_verifications")
+          .update({ failed_attempts: supabase.rpc("increment_attempts") })
+          .eq("email", email.toLowerCase())
+          .eq("verified", false);
+
         return new Response(JSON.stringify({ error: "Invalid or expired OTP. Please try again." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // M-1 FIX: Check if too many failed attempts (max 5)
+      if ((otpRecord.failed_attempts || 0) >= 5) {
+        return new Response(JSON.stringify({ error: "Too many failed attempts. Please request a new code." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -89,11 +118,20 @@ Deno.serve(async (req) => {
         .update({ verified: true })
         .eq("id", otpRecord.id);
 
-      // Create the user manually using the admin API so they bypass email confirmation
-      const { data: listData } = await supabase.auth.admin.listUsers();
-      const existingUser = listData?.users?.find((u: any) => u.email === email.toLowerCase());
+      // C-4 FIX: Use targeted profile lookup instead of listUsers()
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", (
+          await supabase.auth.admin.getUserByEmail(email.toLowerCase())
+            .catch(() => ({ data: { user: null } }))
+        ).data?.user?.id || "")
+        .maybeSingle();
 
-      if (existingUser) {
+      // Check by email via a direct admin API call (single user, not listing all)
+      const { data: existingUserData } = await supabase.auth.admin.getUserByEmail(email.toLowerCase()).catch(() => ({ data: { user: null } }));
+
+      if (existingUserData?.user) {
         return new Response(JSON.stringify({ error: "Email already registered" }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -106,12 +144,13 @@ Deno.serve(async (req) => {
         user_metadata: {
           full_name: fullName || "User",
           area: area || "Other",
-          gender: gender || "female"
-        }
+          gender: gender || "female",
+        },
       });
 
       if (createError) {
-        return new Response(JSON.stringify({ error: "Failed to create user: " + createError.message }), {
+        // L-7 FIX: Generic error message to user, don't expose internals
+        return new Response(JSON.stringify({ error: "Failed to create account. Please try again." }), {
           status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -122,18 +161,33 @@ Deno.serve(async (req) => {
     }
 
     // ─── SEND OTP ───
-    if (!email) {
+    if (!email || typeof email !== "string") {
       return new Response(JSON.stringify({ error: "Email is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const normalizedEmail = email.toLowerCase();
-    
-    // Check if already registered before sending OTP
-    const { data: listData } = await supabase.auth.admin.listUsers();
-    const existingUser = listData?.users?.find((u: any) => u.email === normalizedEmail);
-    if (existingUser) {
+
+    // M-1 FIX: Rate limit — check if an OTP was sent within the last 60 seconds
+    const { data: recentOtp } = await supabase
+      .from("otp_verifications")
+      .select("created_at")
+      .eq("email", normalizedEmail)
+      .eq("verified", false)
+      .gte("created_at", new Date(Date.now() - 60 * 1000).toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (recentOtp) {
+      return new Response(JSON.stringify({ error: "Please wait 60 seconds before requesting a new code." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // C-4 FIX: Use getUserByEmail instead of listUsers() to avoid loading all users
+    const { data: existingUserCheck } = await supabase.auth.admin.getUserByEmail(normalizedEmail).catch(() => ({ data: { user: null } }));
+    if (existingUserCheck?.user) {
       return new Response(JSON.stringify({ error: "This email is already registered. Please sign in instead." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -142,29 +196,33 @@ Deno.serve(async (req) => {
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
+    // C-3 FIX: Hash OTP before storing
+    const otpHash = await hashOTP(code);
+
     // Clean up old OTPs for this email
     await supabase
       .from("otp_verifications")
       .delete()
       .eq("email", normalizedEmail);
 
-    // Store new OTP
+    // Store hashed OTP
     const { error: insertErr } = await supabase
       .from("otp_verifications")
       .insert({
         email: normalizedEmail,
-        otp: code,
+        otp_hash: otpHash,      // store hash, not plaintext
         expires_at: expiresAt,
         verified: false,
+        failed_attempts: 0,
       });
 
     if (insertErr) {
-      return new Response(JSON.stringify({ error: "Failed to store OTP: " + insertErr.message }), {
+      return new Response(JSON.stringify({ error: "Failed to process request. Please try again." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Send email via Resend
+    // Send plaintext OTP to user via email (only they receive it)
     await sendEmail(normalizedEmail, code, fullName || "there");
 
     return new Response(JSON.stringify({ success: true, message: "OTP sent to your email" }), {
@@ -172,7 +230,8 @@ Deno.serve(async (req) => {
     });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
+    // L-7 FIX: Generic error — don't expose internal details
+    return new Response(JSON.stringify({ error: "An error occurred. Please try again." }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

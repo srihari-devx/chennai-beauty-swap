@@ -1,18 +1,33 @@
--- OTP Verifications table for custom email verification
+-- =============================================
+-- SECURITY FIX: OTP table with hashed storage
+-- Run this migration to apply security fixes
+-- =============================================
+
+-- C-3 FIX: Rename otp (plaintext) column to otp_hash and add failed_attempts tracking
+-- M-1 FIX: Add failed_attempts column for brute-force protection
+
+-- If upgrading from old schema, use this:
+ALTER TABLE IF EXISTS otp_verifications
+  RENAME COLUMN otp TO otp_hash;
+
+ALTER TABLE IF EXISTS otp_verifications
+  ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0;
+
+-- Or create fresh (if table doesn't exist):
 CREATE TABLE IF NOT EXISTS otp_verifications (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   email TEXT NOT NULL,
-  otp TEXT NOT NULL,
+  otp_hash TEXT NOT NULL,            -- C-3: SHA-256 hash of the OTP, never plaintext
   expires_at TIMESTAMPTZ NOT NULL,
   verified BOOLEAN DEFAULT FALSE,
+  failed_attempts INTEGER NOT NULL DEFAULT 0,  -- M-1: track brute-force attempts
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Index for fast email lookups
 CREATE INDEX IF NOT EXISTS idx_otp_verifications_email ON otp_verifications(email);
 
--- Auto-cleanup expired OTPs (optional: run via cron or let the edge function handle it)
--- Clean up verified/expired entries older than 1 hour
+-- Auto-cleanup expired OTPs
 CREATE OR REPLACE FUNCTION cleanup_expired_otps()
 RETURNS void AS $$
 BEGIN

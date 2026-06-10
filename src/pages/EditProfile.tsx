@@ -4,22 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
 
-export const CHENNAI_AREAS = [
-  "T Nagar", "Velachery", "Anna Nagar", "Adyar", "Tambaram",
-  "Porur", "Sholinganallur", "OMR", "Mylapore", "Besant Nagar",
-  "Perambur", "Ambattur", "Chromepet", "Guindy", "Kodambakkam",
-  "Nungambakkam", "Egmore", "Royapettah", "Kilpauk", "Other"
-];
 
 const EditProfile = () => {
   const { user, profile, fetchProfile } = useAuth();
@@ -31,7 +18,7 @@ const EditProfile = () => {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
-      setArea(profile.area || "Other");
+      setArea(profile.area || "");
     }
   }, [profile]);
 
@@ -98,17 +85,14 @@ const EditProfile = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Location (Chennai Area)</label>
-              <Select value={area} onValueChange={setArea}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue placeholder="Select Area" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CHENNAI_AREAS.map((a) => (
-                    <SelectItem key={a} value={a}>{a}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium text-foreground">Location (Place in Chennai)</label>
+              <Input
+                value={area}
+                onChange={(e) => setArea(e.target.value)}
+                placeholder="e.g. T Nagar, Adyar"
+                className="bg-background"
+                required
+              />
             </div>
 
             <Button

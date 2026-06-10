@@ -50,12 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
       setProfile(data);
 
-      // Auto-apply theme based on gender
-      if (data?.gender === "male" && !localStorage.getItem("cbs-theme")) {
-        localStorage.setItem("cbs-theme", "blue");
-        document.documentElement.setAttribute("data-theme", "blue");
-      }
-
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")

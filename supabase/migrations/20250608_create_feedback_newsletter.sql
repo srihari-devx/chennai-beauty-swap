@@ -19,11 +19,13 @@ CREATE TABLE IF NOT EXISTS public.feedback (
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can insert feedback
+DROP POLICY IF EXISTS "Anyone can submit feedback" ON public.feedback;
 CREATE POLICY "Anyone can submit feedback"
   ON public.feedback FOR INSERT
   WITH CHECK (true);
 
 -- Only admins can read feedback
+DROP POLICY IF EXISTS "Admins can read feedback" ON public.feedback;
 CREATE POLICY "Admins can read feedback"
   ON public.feedback FOR SELECT
   USING (
@@ -35,6 +37,7 @@ CREATE POLICY "Admins can read feedback"
   );
 
 -- Admins can delete feedback
+DROP POLICY IF EXISTS "Admins can delete feedback" ON public.feedback;
 CREATE POLICY "Admins can delete feedback"
   ON public.feedback FOR DELETE
   USING (
@@ -59,11 +62,13 @@ CREATE TABLE IF NOT EXISTS public.newsletter_subscribers (
 ALTER TABLE public.newsletter_subscribers ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can subscribe (insert)
+DROP POLICY IF EXISTS "Anyone can subscribe to newsletter" ON public.newsletter_subscribers;
 CREATE POLICY "Anyone can subscribe to newsletter"
   ON public.newsletter_subscribers FOR INSERT
   WITH CHECK (true);
 
 -- Only admins can view subscribers
+DROP POLICY IF EXISTS "Admins can view subscribers" ON public.newsletter_subscribers;
 CREATE POLICY "Admins can view subscribers"
   ON public.newsletter_subscribers FOR SELECT
   USING (
@@ -75,6 +80,7 @@ CREATE POLICY "Admins can view subscribers"
   );
 
 -- Only admins can update subscribers
+DROP POLICY IF EXISTS "Admins can update subscribers" ON public.newsletter_subscribers;
 CREATE POLICY "Admins can update subscribers"
   ON public.newsletter_subscribers FOR UPDATE
   USING (
@@ -86,6 +92,7 @@ CREATE POLICY "Admins can update subscribers"
   );
 
 -- Only admins can delete subscribers
+DROP POLICY IF EXISTS "Admins can delete subscribers" ON public.newsletter_subscribers;
 CREATE POLICY "Admins can delete subscribers"
   ON public.newsletter_subscribers FOR DELETE
   USING (

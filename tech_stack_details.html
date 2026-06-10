@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Swaptics — Tech Stack Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #af38a0;
+      --primary-gradient: linear-gradient(135deg, #af38a0, #7b1e6e);
+      --bg-gradient: linear-gradient(180deg, #fdf8fc 0%, #f7f0f6 100%);
+      --card-bg: #ffffff;
+      --text-main: #2d1c2b;
+      --text-muted: #6b5a69;
+      --border-color: #f0e2ee;
+      --shadow-sm: 0 4px 12px rgba(175, 56, 160, 0.04);
+      --shadow-md: 0 8px 30px rgba(175, 56, 160, 0.08);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    header {
+      background: var(--primary-gradient);
+      padding: 50px 40px;
+      color: #ffffff;
+      position: relative;
+    }
+
+    header::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .header-content h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .header-content p {
+      font-size: 16px;
+      opacity: 0.9;
+      font-weight: 400;
+    }
+
+    .content {
+      padding: 40px;
+    }
+
+    h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      color: var(--primary);
+      margin-top: 35px;
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h2:first-of-type {
+      margin-top: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-bottom: 30px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    th, td {
+      padding: 14px 18px;
+      text-align: left;
+    }
+
+    th {
+      background: #faf5f9;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: #fdfafd;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #fdf0fa;
+      color: var(--primary);
+      border-radius: 8px;
+      font-family: monospace;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .list-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      font-size: 14px;
+      background: #faf6fa;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .list-item strong {
+      color: var(--primary);
+      margin-right: 6px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 30px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .print-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+
+    .print-btn:hover {
+      background: #902d84;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+        padding: 0;
+      }
+      .container {
+        box-shadow: none;
+        border: none;
+      }
+      .print-btn {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="header-content">
+        <h1>Swaptics — Tech Stack Documentation</h1>
+        <p>A comprehensive overview of libraries, frameworks, configurations, and core systems powering the Chennai Beauty Swap platform.</p>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <h2>1. Core Framework & Language Runtime</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Technology</th>
+            <th>Version</th>
+            <th>Purpose & Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>React</strong></td>
+            <td><span class="badge">^18.3.1</span></td>
+            <td>Component-based declarative library used for client-side rendering and interactive application state management.</td>
+          </tr>
+          <tr>
+            <td><strong>TypeScript</strong></td>
+            <td><span class="badge">^5.8.3</span></td>
+            <td>Statically-typed language that compiles to standard JavaScript, improving developer speed and minimizing runtime bugs.</td>
+          </tr>
+          <tr>
+            <td><strong>Vite</strong></td>
+            <td><span class="badge">^5.4.19</span></td>
+            <td>High-performance, instant front-end build tool and developer environment utilizing native ES modules.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>2. Front-End Libraries & Architecture</h2>
+      
+      <div class="list-item">
+        <strong>React Router DOM:</strong> <span class="badge" style="margin-right:8px;">^6.30.1</span> Handles routing logic, state matching, and authorization route locks (e.g. <code>ProtectedRoute</code>).
+      </div>
+      <div class="list-item">
+        <strong>TanStack React Query:</strong> <span class="badge" style="margin-right:8px;">^5.83.0</span> Manages cache syncing, network state mutations, and robust backend queries.
+      </div>
+      <div class="list-item">
+        <strong>React Hook Form:</strong> <span class="badge" style="margin-right:8px;">^7.61.1</span> Delivers fast, render-optimized forms and input state synchronization.
+      </div>
+      <div class="list-item">
+        <strong>Zod:</strong> <span class="badge" style="margin-right:8px;">^3.25.76</span> Declares secure schemas for form validators (product values, user credentials, feedback fields).
+      </div>
+      <div class="list-item">
+        <strong>@hookform/resolvers:</strong> <span class="badge" style="margin-right:8px;">^3.10.0</span> Integrates Zod schema validations seamlessly into React Hook Form hooks.
+      </div>
+
+      <h2>3. Styling, UI Design & Theming</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Technology</th>
+            <th>Version</th>
+            <th>Role in System</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Tailwind CSS</strong></td>
+            <td><span class="badge">^3.4.17</span></td>
+            <td>Utility-first layout tool configured with responsive breakpoints and customized design utilities.</td>
+          </tr>
+          <tr>
+            <td><strong>shadcn/ui (Radix UI)</strong></td>
+            <td><span class="badge">Latest</span></td>
+            <td>Accessible, unstyled layout primitives (dialogs, select dropdowns, overlays) customized using styling custom styles.</td>
+          </tr>
+          <tr>
+            <td><strong>Lucide React</strong></td>
+            <td><span class="badge">^0.462.0</span></td>
+            <td>Standard vector iconography used consistently throughout product components.</td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div class="list-item">
+        <strong>Unified Primary Theme Color:</strong> Set to <code>#af38a0</code> (HSL 308 52% 45%) across all views. Default themes and Masculine settings share this same color variables structure to create a consistent and cohesive brand design.
+      </div>
+
+      <h2>4. Backend Infrastructure (BaaS)</h2>
+      <p class="section-desc">Powered by Supabase (<code>@supabase/supabase-js: ^2.96.0</code>), managing the API queries, authentication flows, and object assets:</p>
+      
+      <div class="list-item">
+        <strong>PostgreSQL Database:</strong> Hosts core schema tables: profile configurations, swap listings, message records, article updates, and user feedback logs.
+      </div>
+      <div class="list-item">
+        <strong>Supabase Auth:</strong> Manages identity authentication, session states, and secure One-Time Passcode (OTP) verifications.
+      </div>
+      <div class="list-item">
+        <strong>Row-Level Security (RLS):</strong> Guards all database access inside PostgreSQL, validating user privileges per action.
+      </div>
+      <div class="list-item">
+        <strong>Supabase Storage:</strong> Secure storage buckets holding item swap images and product photos.
+      </div>
+      <div class="list-item">
+        <strong>Edge Functions (CLI v2.84.4):</strong> Deno backend script functions: <code>setup-admin</code> (administrative access setup), <code>send-otp</code> (secure hashed OTP generator), and <code>delete-user</code> (account purging handler).
+      </div>
+
+      <h2>5. SEO & Open Graph Metadata</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Property / Tag</th>
+            <th>Content Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>SEO Standard</td>
+            <td><code>&lt;title&gt;</code></td>
+            <td>Swaptics</td>
+          </tr>
+          <tr>
+            <td>SEO Standard</td>
+            <td><code>description</code></td>
+            <td>Rescue Beauty Products. Save Money. Reduce Waste. Chennai's hyperlocal marketplace to buy, sell, and swap unused cosmetics. Connect with beauty lovers in your area.</td>
+          </tr>
+          <tr>
+            <td>SEO Standard</td>
+            <td><code>author</code></td>
+            <td>Srihari</td>
+          </tr>
+          <tr>
+            <td>Open Graph</td>
+            <td><code>og:title</code></td>
+            <td>Swaptics</td>
+          </tr>
+          <tr>
+            <td>Open Graph</td>
+            <td><code>og:description</code></td>
+            <td>Rescue Beauty Products. Save Money. Reduce Waste.</td>
+          </tr>
+          <tr>
+            <td>Open Graph</td>
+            <td><code>og:type</code></td>
+            <td>website</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>6. Production & Deployment Specs</h2>
+      <div class="list-item">
+        <strong>Platform Hosting:</strong> Deployed via Vercel with security configs embedded inside <code>vercel.json</code>.
+      </div>
+      <div class="list-item">
+        <strong>Header Security:</strong> Enforces Content-Security-Policy (CSP), X-Frame-Options (<code>DENY</code>), X-Content-Type-Options (<code>nosniff</code>), Referrer-Policy, and permissions integrations.
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <div>Document generated for Swaptics Platform &bull; Confidential</div>
+      <button class="print-btn" onclick="window.print()">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="display:inline-block; vertical-align: middle;">
+          <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+          <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
+        </svg>
+        Print / Save as PDF
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>

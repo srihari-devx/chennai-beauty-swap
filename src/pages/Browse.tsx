@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import PriceRangeFilter from "@/components/PriceRangeFilter";
 import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS, CHENNAI_AREAS } from "@/lib/constants";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS } from "@/lib/constants";
 
 const Browse = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -33,7 +33,7 @@ const Browse = () => {
 
     if (category) query = query.eq("category", category as any);
     if (condition) query = query.eq("condition", condition as any);
-    if (area) query = query.eq("area", area as any);
+    if (area) query = query.ilike("area", `%${area}%`);
     query = query.gte("selling_price", priceRange[0]).lte("selling_price", priceRange[1]);
     if (term) {
       // Split term into individual words
@@ -189,16 +189,12 @@ const Browse = () => {
       {/* Area */}
       <div>
         <p className="text-sm font-semibold text-foreground mb-3">Area in Chennai</p>
-        <select
+        <Input
+          placeholder="e.g. T Nagar, Adyar"
           value={area}
           onChange={(e) => setArea(e.target.value)}
-          className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="">All Areas</option>
-          {CHENNAI_AREAS.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
+          className="rounded-xl border-border bg-background"
+        />
       </div>
 
       {/* Price Range */}

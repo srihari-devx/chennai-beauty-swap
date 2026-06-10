@@ -23,9 +23,13 @@ const FeedbackForm = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  // M-5 fix: Honeypot field — bots fill this, humans leave it empty
+  const [honeypot, setHoneypot] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // M-5 fix: Honeypot check — if filled, it's a bot
+    if (honeypot) return;
 
     if (!name.trim()) { toast.error("Please enter your name."); return; }
     if (!email.trim()) { toast.error("Please enter your email."); return; }
@@ -120,6 +124,7 @@ const FeedbackForm = () => {
                 onChange={(e) => setName(e.target.value)}
                 className="rounded-xl"
                 required
+                maxLength={100}
               />
             </div>
             <div className="space-y-2">
@@ -190,6 +195,20 @@ const FeedbackForm = () => {
             </div>
           </div>
 
+          {/* M-5 fix: Honeypot field — visually hidden, traps bots */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
+            <label htmlFor="website">Website (leave blank)</label>
+            <input
+              type="text"
+              id="website"
+              name="website"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
+
           {/* Message */}
           <div className="space-y-2">
             <Label htmlFor="feedbackMessage">Message</Label>
@@ -200,6 +219,7 @@ const FeedbackForm = () => {
               placeholder="Tell us what you think..."
               rows={4}
               required
+              maxLength={2000}
               className="flex w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y placeholder:text-muted-foreground"
             />
           </div>

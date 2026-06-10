@@ -12,9 +12,13 @@ const NewsletterSection = () => {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
+  // M-5 fix: Honeypot field — bots fill this, humans don't
+  const [honeypot, setHoneypot] = useState("");
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
+    // M-5 fix: Honeypot check — bots fill this field, humans don't
+    if (honeypot) { setSubscribed(true); return; } // silent reject
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail) {
       toast.error("Please enter your email address.");
@@ -88,6 +92,17 @@ const NewsletterSection = () => {
               </p>
 
               <form onSubmit={handleSubscribe} className="space-y-3 max-w-md mx-auto">
+                {/* M-5 fix: Honeypot hidden field */}
+                <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
+                  <input
+                    type="text"
+                    name="phone_number"
+                    value={honeypot}
+                    onChange={(e) => setHoneypot(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     type="text"
@@ -95,6 +110,7 @@ const NewsletterSection = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="rounded-xl h-11 bg-background/80"
+                    maxLength={100}
                   />
                   <Input
                     type="email"

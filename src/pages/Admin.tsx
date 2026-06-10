@@ -217,8 +217,21 @@ const Admin = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this user and all their data?")) return;
-    
+    // L-6 fix: Replace native confirm() with toast-based confirmation pattern
+    toast("Are you sure you want to permanently delete this user and all their data?", {
+      action: {
+        label: "Yes, Delete",
+        onClick: () => _doDeleteUser(userId),
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+      duration: 8000,
+    });
+  };
+
+  const _doDeleteUser = async (userId: string) => {
     setManagingUserId(userId);
     try {
       // Get user's product IDs first (needed for cascading deletes)
@@ -263,46 +276,56 @@ const Admin = () => {
       const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
       if (error) throw error;
 
-      // Delete from auth.users via secure SQL RPC (prevents reappearing on refresh)
-      // @ts-ignore - The RPC function exists in Supabase but might not be in the generated types yet
+      // Delete from auth.users via secure SQL RPC
+      // @ts-ignore
       const { error: rpcError } = await supabase.rpc("admin_delete_user", {
         target_user_id: userId,
       });
       if (rpcError) {
         console.warn("Auth user deletion warning:", rpcError.message);
-        // Still consider it a success since profile data is removed
       }
 
       setUsers(u => u.filter(user => user.user_id !== userId));
       setStats(s => ({ ...s, users: s.users - 1 }));
       toast.success("User and all their data deleted successfully");
-    } catch (error: any) {
-      toast.error("Failed to delete user: " + (error.message || "Unknown error"));
+    } catch {
+      // L-7 fix: Generic error message — don't expose internal DB errors
+      toast.error("Failed to delete user. Please try again.");
     } finally {
       setManagingUserId(null);
     }
   };
 
   const deleteProduct = async (id: string) => {
-    if (!confirm("Delete this product?")) return;
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (!error) {
-      setProducts(p => p.filter(prod => prod.id !== id));
-      toast.success("Product deleted");
-    }
+    // L-6 fix: toast confirmation instead of native confirm()
+    toast("Delete this product permanently?", {
+      action: { label: "Delete", onClick: async () => {
+        const { error } = await supabase.from("products").delete().eq("id", id);
+        if (!error) {
+          setProducts(p => p.filter(prod => prod.id !== id));
+          toast.success("Product deleted");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
   };
 
   const addAdmin = async () => {
     if (!newAdminEmail.trim()) return;
+    // L-4 fix: Validate email format before sending to server
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newAdminEmail.trim())) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
     setAddingAdmin(true);
-    // Find profile by looking up all profiles — we match by checking auth
-    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name");
-    // We need to use the edge function to find user by email
     const res = await supabase.functions.invoke("setup-admin", {
       body: { email: newAdminEmail.trim(), password: null },
     });
     if (res.error) {
-      toast.error("Failed to add admin: " + res.error.message);
+      // L-7 fix: Generic error message
+      toast.error("Failed to add admin. Please try again.");
     } else if (res.data?.error) {
       toast.error(res.data.error);
     } else {
@@ -314,12 +337,24 @@ const Admin = () => {
   };
 
   const removeAdmin = async (userId: string) => {
-    if (!confirm("Remove admin role?")) return;
-    const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
-    if (!error) {
-      setAdmins(a => a.filter(admin => admin.user_id !== userId));
-      toast.success("Admin role removed");
+    // H-4 fix: Prevent removing the last admin
+    const adminCount = admins.length;
+    if (adminCount <= 1) {
+      toast.error("Cannot remove the last admin. Promote another user first.");
+      return;
     }
+    // L-6 fix: toast confirmation instead of native confirm()
+    toast("Remove admin role from this user?", {
+      action: { label: "Remove", onClick: async () => {
+        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
+        if (!error) {
+          setAdmins(a => a.filter(admin => admin.user_id !== userId));
+          toast.success("Admin role removed");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
   };
 
   const statCards = [
@@ -350,13 +385,19 @@ const Admin = () => {
       toast.error("Title and content are required.");
       return;
     }
+    // L-8 fix: Validate cover image URL — only allow https:// or Supabase storage URLs
+    const coverUrl = articleForm.cover_image_url.trim();
+    if (coverUrl && !coverUrl.startsWith("https://")) {
+      toast.error("Cover image URL must start with https://");
+      return;
+    }
     setSavingArticle(true);
     const payload = {
-      title: articleForm.title.trim(),
-      content: articleForm.content.trim(),
-      excerpt: articleForm.excerpt.trim() || null,
+      title: articleForm.title.trim().slice(0, 300),   // M-2 fix: enforce max length
+      content: articleForm.content.trim().slice(0, 50000),
+      excerpt: articleForm.excerpt.trim().slice(0, 500) || null,
       category: articleForm.category,
-      cover_image_url: articleForm.cover_image_url.trim() || null,
+      cover_image_url: coverUrl || null,
       is_published: articleForm.is_published,
       updated_at: new Date().toISOString(),
     };
@@ -382,12 +423,18 @@ const Admin = () => {
   };
 
   const handleDeleteArticle = async (id: string) => {
-    if (!confirm("Delete this article?")) return;
-    const { error } = await (supabase as any).from("articles").delete().eq("id", id);
-    if (!error) {
-      setArticlesList(prev => prev.filter(a => a.id !== id));
-      toast.success("Article deleted");
-    }
+    // L-6 fix: toast confirmation instead of native confirm()
+    toast("Delete this article permanently?", {
+      action: { label: "Delete", onClick: async () => {
+        const { error } = await (supabase as any).from("articles").delete().eq("id", id);
+        if (!error) {
+          setArticlesList(prev => prev.filter(a => a.id !== id));
+          toast.success("Article deleted");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
   };
 
   const handleEditArticle = (article: ArticleRow) => {
@@ -413,21 +460,33 @@ const Admin = () => {
   };
 
   const removeSubscriber = async (id: string) => {
-    if (!confirm("Remove this subscriber?")) return;
-    const { error } = await (supabase as any).from("newsletter_subscribers").delete().eq("id", id);
-    if (!error) {
-      setSubscribers(prev => prev.filter(s => s.id !== id));
-      toast.success("Subscriber removed");
-    }
+    // L-6 fix: toast confirmation instead of native confirm()
+    toast("Remove this subscriber?", {
+      action: { label: "Remove", onClick: async () => {
+        const { error } = await (supabase as any).from("newsletter_subscribers").delete().eq("id", id);
+        if (!error) {
+          setSubscribers(prev => prev.filter(s => s.id !== id));
+          toast.success("Subscriber removed");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
   };
 
   const deleteFeedback = async (id: string) => {
-    if (!confirm("Delete this feedback?")) return;
-    const { error } = await (supabase as any).from("feedback").delete().eq("id", id);
-    if (!error) {
-      setFeedbackList(prev => prev.filter(f => f.id !== id));
-      toast.success("Feedback deleted");
-    }
+    // L-6 fix: toast confirmation instead of native confirm()
+    toast("Delete this feedback entry?", {
+      action: { label: "Delete", onClick: async () => {
+        const { error } = await (supabase as any).from("feedback").delete().eq("id", id);
+        if (!error) {
+          setFeedbackList(prev => prev.filter(f => f.id !== id));
+          toast.success("Feedback deleted");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
   };
 
   const copyAllEmails = () => {
@@ -802,6 +861,7 @@ const Admin = () => {
                           value={articleForm.title}
                           onChange={e => setArticleForm(f => ({ ...f, title: e.target.value }))}
                           placeholder="Article title"
+                          maxLength={300}  // M-2 fix: enforce max length
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -819,12 +879,13 @@ const Admin = () => {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="articleCover">Cover Image URL</Label>
+                          <Label htmlFor="articleCover">Cover Image URL (https:// only)</Label>
                           <Input
                             id="articleCover"
                             value={articleForm.cover_image_url}
                             onChange={e => setArticleForm(f => ({ ...f, cover_image_url: e.target.value }))}
-                            placeholder="https://..."
+                            placeholder="https://...supabase.co/storage/..."  // L-8: must be https
+                            type="url"
                           />
                         </div>
                       </div>

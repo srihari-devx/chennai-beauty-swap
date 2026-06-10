@@ -1,8 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { CHENNAI_AREAS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +9,7 @@ import { toast } from "sonner";
 
 type AuthMode = "signin" | "signup";
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 8; // L-5 fix: increased from 6 to 8 (NIST SP 800-63B minimum)
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -27,11 +25,11 @@ const Auth = () => {
   // Sign-up only fields
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [area, setArea] = useState<string>("Other");
+  const [area, setArea] = useState<string>("");
   const [gender, setGender] = useState("female");
 
-  // TOS acceptance
-  const [tosAccepted, setTosAccepted] = useState(true);
+  // TOS acceptance — H-3 fix: default to false so user must explicitly accept
+  const [tosAccepted, setTosAccepted] = useState(false);
 
   // Post-signup state
   const [signupDone, setSignupDone] = useState(false);
@@ -373,21 +371,16 @@ const Auth = () => {
                     <div className="space-y-2">
                       <Label htmlFor="area">
                         <MapPin className="inline w-3.5 h-3.5 mr-1" />
-                        Area
+                        Place in Chennai
                       </Label>
-                      <select
+                      <Input
                         id="area"
+                        type="text"
                         value={area}
                         onChange={(e) => setArea(e.target.value)}
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        placeholder="e.g. T Nagar, Adyar"
                         required
-                      >
-                        {CHENNAI_AREAS.map((place) => (
-                          <option key={place} value={place}>
-                            {place}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </div>
 
                     <div className="space-y-2">

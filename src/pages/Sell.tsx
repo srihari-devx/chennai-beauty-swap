@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, X, Camera, ArrowLeft } from "lucide-react";
-import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS, CHENNAI_AREAS } from "@/lib/constants";
+import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS } from "@/lib/constants";
 import { toast } from "sonner";
 
 const Sell = () => {
@@ -29,8 +29,7 @@ const Sell = () => {
     expiry_date: "",
     original_price: "",
     selling_price: "",
-    reason_for_selling: "",
-    area: profile?.area || "T Nagar",
+    area: profile?.area || "",
   });
 
   useEffect(() => {
@@ -269,11 +268,11 @@ const Sell = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>Brand <span className="text-destructive">*</span></Label>
-                <Input placeholder="e.g. Lakme, Maybelline" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} required className="rounded-xl" />
+              <Input placeholder="e.g. Lakme, Maybelline" value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} required className="rounded-xl" maxLength={100} />
               </div>
               <div className="space-y-1.5">
                 <Label>Product Name <span className="text-destructive">*</span></Label>
-                <Input placeholder="e.g. Matte Lipstick Red" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required className="rounded-xl" />
+                <Input placeholder="e.g. Matte Lipstick Red" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required className="rounded-xl" maxLength={200} />
               </div>
             </div>
 
@@ -311,10 +310,15 @@ const Sell = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Area in Chennai <span className="text-destructive">*</span></Label>
-              <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} required className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
-                {CHENNAI_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
+              <Label>Place in Chennai <span className="text-destructive">*</span></Label>
+              <Input
+                type="text"
+                placeholder="e.g. T Nagar, Adyar"
+                value={form.area}
+                onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+                required
+                className="rounded-xl"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -324,6 +328,7 @@ const Sell = () => {
                 value={form.reason_for_selling}
                 onChange={e => setForm(f => ({ ...f, reason_for_selling: e.target.value }))}
                 className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none h-20"
+                maxLength={1000}
               />
             </div>
           </div>
