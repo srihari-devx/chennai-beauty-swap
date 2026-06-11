@@ -23,11 +23,8 @@ const Navbar = () => {
     <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <img src="/Swaptics logo 1.png" alt="Swaptics Logo" className="w-10 h-10 rounded-xl object-cover shadow-sm border border-border" />
-          <span className="font-display font-semibold text-xl text-foreground group-hover:text-primary transition-colors">
-            Swaptics
-          </span>
+        <Link to="/" className="flex items-center group shrink-0">
+          <img src="/image.png" alt="Swaptics" className="h-14 w-auto object-contain" />
         </Link>
 
         {/* Desktop Nav */}
