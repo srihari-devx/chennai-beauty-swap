@@ -75,6 +75,28 @@ const CarouselDots = ({ api }: { api: CarouselApi | undefined }) => {
   );
 };
 
+const ArticleImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+  const [error, setError] = useState(false);
+
+  if (error || !src) {
+    return (
+      <div className="w-full h-40 gradient-hero flex items-center justify-center">
+        <Newspaper className="w-10 h-10 text-primary/30" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      referrerPolicy="no-referrer"
+      onError={() => setError(true)}
+    />
+  );
+};
+
 /* ─── Main Page ─── */
 const Index = () => {
   const { user, profile } = useAuth();
@@ -417,19 +439,13 @@ const Index = () => {
                     <Link to="/articles" className="group block">
                       <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden hover:shadow-beauty transition-all duration-300 group-hover:-translate-y-1 h-full flex flex-col">
                         {/* Cover image */}
-                        {article.cover_image_url ? (
-                          <div className="w-full h-40 overflow-hidden bg-muted">
-                            <img
-                              src={article.cover_image_url}
-                              alt={article.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-full h-40 gradient-hero flex items-center justify-center">
-                            <Newspaper className="w-10 h-10 text-primary/30" />
-                          </div>
-                        )}
+                        <div className="w-full h-40 overflow-hidden bg-muted">
+                          <ArticleImage
+                            src={article.cover_image_url || ""}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
                         <div className="p-4 flex-1 flex flex-col">
                           {/* Meta */}
                           <div className="flex flex-wrap items-center gap-2 mb-2">

@@ -47,6 +47,28 @@ const formatCategory = (cat: string | null) => {
     .join(" ");
 };
 
+const ArticleImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+  const [error, setError] = useState(false);
+
+  if (error || !src) {
+    return (
+      <div className="w-full h-full bg-muted flex items-center justify-center min-h-[160px]">
+        <Newspaper className="w-10 h-10 text-primary/30" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      referrerPolicy="no-referrer"
+      onError={() => setError(true)}
+    />
+  );
+};
+
 const Articles = () => {
   const { user } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
@@ -139,15 +161,13 @@ const Articles = () => {
                     style={{ animationDelay: `${idx * 60}ms` }}
                   >
                     {/* Cover image */}
-                    {article.cover_image_url && (
-                      <div className="w-full h-48 md:h-56 overflow-hidden">
-                        <img
-                          src={article.cover_image_url}
-                          alt={article.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
+                    <div className="w-full h-48 md:h-56 overflow-hidden">
+                      <ArticleImage
+                        src={article.cover_image_url || ""}
+                        alt={article.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
 
                     <div className="p-6">
                       {/* Meta row */}
