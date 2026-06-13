@@ -21,10 +21,10 @@ const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-md border-b border-border shadow-sm">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="container mx-auto px-4 h-24 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center group shrink-0">
-          <img src="/image.png" alt="Swaptics" className="h-14 w-auto object-contain" />
+          <img src="/Swaptics transparent BG.png" alt="Swaptics" className="h-28 md:h-36 w-auto object-contain -my-4" />
         </Link>
 
         {/* Desktop Nav */}
