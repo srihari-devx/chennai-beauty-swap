@@ -320,18 +320,36 @@ const Admin = () => {
       return;
     }
     setAddingAdmin(true);
-    const res = await supabase.functions.invoke("setup-admin", {
-      body: { email: newAdminEmail.trim(), password: null },
-    });
-    if (res.error) {
-      // L-7 fix: Generic error message
-      toast.error("Failed to add admin. Please try again.");
-    } else if (res.data?.error) {
-      toast.error(res.data.error);
-    } else {
-      toast.success(`Admin role granted to ${newAdminEmail}`);
-      setNewAdminEmail("");
-      fetchData();
+    try {
+      const res = await supabase.functions.invoke("setup-admin", {
+        body: { email: newAdminEmail.trim() },
+      });
+
+      // supabase.functions.invoke treats non-2xx as error.
+      // The actual error message may be in res.data (parsed body) or res.error.context
+      if (res.error) {
+        // Try to get the server's error message from the response body
+        let serverMsg = "";
+        try {
+          // For FunctionsHttpError, the response body may already be parsed in res.data
+          if (res.data?.error) {
+            serverMsg = res.data.error;
+          } else if (res.error.message) {
+            serverMsg = res.error.message;
+          }
+        } catch {
+          serverMsg = res.error.message || "Unknown error";
+        }
+        toast.error(serverMsg || "Failed to add admin. Please try again.");
+      } else if (res.data?.error) {
+        toast.error(res.data.error);
+      } else {
+        toast.success(`Admin role granted to ${newAdminEmail}`);
+        setNewAdminEmail("");
+        fetchData();
+      }
+    } catch (err: any) {
+      toast.error(`Unexpected error: ${err.message || "Please try again."}`);
     }
     setAddingAdmin(false);
   };

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, Mail, Newspaper, Calendar, Tag } from "lucide-react";
+import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, ChevronDown, Mail, Newspaper, Calendar, Tag } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +94,34 @@ const ArticleImage = ({ src, alt, className }: { src: string; alt: string; class
       referrerPolicy="no-referrer"
       onError={() => setError(true)}
     />
+  );
+};
+
+/* ─── FAQ Accordion Item ─── */
+const FaqItem = ({ question, answer }: { question: string; answer: string }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="bg-card rounded-2xl border border-border shadow-card overflow-hidden transition-all duration-200 hover:shadow-beauty"
+    >
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-4 p-5 text-left cursor-pointer"
+        aria-expanded={open}
+      >
+        <span className="font-semibold text-foreground text-sm sm:text-base leading-snug">{question}</span>
+        <ChevronDown
+          className={`w-5 h-5 text-primary flex-shrink-0 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      <div
+        className="overflow-hidden transition-all duration-300 ease-in-out"
+        style={{ maxHeight: open ? "300px" : "0px", opacity: open ? 1 : 0 }}
+      >
+        <p className="px-5 pb-5 text-muted-foreground text-sm leading-relaxed">{answer}</p>
+      </div>
+    </div>
   );
 };
 
@@ -506,6 +534,50 @@ const Index = () => {
                   <p className="text-muted-foreground text-sm leading-relaxed">{tip.desc}</p>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ SECTION */}
+      <section className="py-16 px-4 gradient-hero">
+        <div className="container max-w-3xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl font-bold text-foreground mb-2">Frequently Asked Questions</h2>
+            <p className="text-muted-foreground">Everything you need to know about Swaptics</p>
+          </div>
+          <div className="space-y-3">
+            {[
+              {
+                q: "What is Swaptics?",
+                a: "Swaptics is Chennai's hyperlocal marketplace for buying, selling, and swapping unused or gently-used beauty products. We connect beauty lovers in the same area so you can meet up safely — no shipping, no payment gateway."
+              },
+              {
+                q: "Is Swaptics free to use?",
+                a: "Yes! Listing products, browsing, and chatting with buyers/sellers is completely free. We don't charge any commission or listing fees."
+              },
+              {
+                q: "How do payments work?",
+                a: "Swaptics doesn't handle payments. Buyers and sellers arrange the price via in-app chat and exchange cash (or swap products) when they meet in person."
+              },
+              {
+                q: "How do I know a product is authentic?",
+                a: "We encourage sellers to upload photos of the retail bill, batch code, and the actual product. Always inspect the product carefully during meet-up before completing the deal."
+              },
+              {
+                q: "Is it safe to meet strangers?",
+                a: "Safety is our top priority. We recommend meeting in busy public places like malls or coffee shops, going with a friend, and keeping all communication within the app. Never share personal contact details."
+              },
+              {
+                q: "What can I sell on Swaptics?",
+                a: "You can sell any unused, sealed, swatched, or gently-used cosmetic and beauty products — lipsticks, foundations, skincare, fragrances, eyeshadows, and more. Expired or counterfeit products are not allowed."
+              },
+              {
+                q: "What areas does Swaptics cover?",
+                a: "Swaptics currently operates across major areas in Chennai — T Nagar, Velachery, Anna Nagar, Adyar, OMR, Mylapore, and many more. You can also enter any custom location within Chennai."
+              },
+            ].map((faq, i) => (
+              <FaqItem key={i} question={faq.q} answer={faq.a} />
             ))}
           </div>
         </div>

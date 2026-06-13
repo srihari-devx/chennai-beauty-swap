@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Camera, ArrowLeft } from "lucide-react";
+import { Upload, X, Camera, ArrowLeft, Lightbulb } from "lucide-react";
 import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -20,6 +20,7 @@ const Sell = () => {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [removedExistingImages, setRemovedExistingImages] = useState<string[]>([]);
+  const [showPhotoTips, setShowPhotoTips] = useState(false);
   const [originalSellingPrice, setOriginalSellingPrice] = useState<number | null>(null);
   const [form, setForm] = useState({
     brand: "",
@@ -216,7 +217,56 @@ const Sell = () => {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Image Upload */}
           <div className="bg-card rounded-2xl border border-border p-5 shadow-card">
-            <Label className="text-base font-semibold mb-3 block">Product Photos <span className="text-destructive">*</span></Label>
+            <div className="flex items-center justify-between mb-1">
+              <Label className="text-base font-semibold">Product Photos <span className="text-destructive">*</span></Label>
+              <button
+                type="button"
+                onClick={() => setShowPhotoTips(t => !t)}
+                className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-200 cursor-pointer ${
+                  showPhotoTips
+                    ? "bg-primary/10 border-primary/30 text-primary"
+                    : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                }`}
+                aria-expanded={showPhotoTips}
+              >
+                <Lightbulb className="w-3.5 h-3.5" />
+                Photo Tips
+              </button>
+            </div>
+            {/* Photo Tips Panel */}
+            <div
+              className="overflow-hidden transition-all duration-300 ease-in-out"
+              style={{ maxHeight: showPhotoTips ? "400px" : "0px", opacity: showPhotoTips ? 1 : 0 }}
+            >
+              <div className="mt-2 mb-4 p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 space-y-3">
+                <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                  <span className="text-base">📸</span> Take these photos to sell faster:
+                </p>
+                <div className="space-y-2.5">
+                  <div className="flex gap-3 items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200/60 flex items-center justify-center text-xs font-bold text-amber-800">1</span>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-900">Proof of Purchase</p>
+                      <p className="text-[11px] text-amber-700 leading-relaxed">A clear photo of your retail bill, order history screen, or email invoice.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200/60 flex items-center justify-center text-xs font-bold text-amber-800">2</span>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-900">Batch / MFG Code</p>
+                      <p className="text-[11px] text-amber-700 leading-relaxed">A crisp, zoomed-in photo of the alphanumeric code stamped on the product.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 items-start">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200/60 flex items-center justify-center text-xs font-bold text-amber-800">3</span>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-900">Actual Condition</p>
+                      <p className="text-[11px] text-amber-700 leading-relaxed">Show the inside of the eyeshadow palette, the lipstick tip, or hold the liquid foundation bottle up against the light to show the true level.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <p className="text-xs text-muted-foreground mb-4">Upload 1–5 photos. First photo will be the cover image.</p>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
               {/* Existing images (edit mode) */}

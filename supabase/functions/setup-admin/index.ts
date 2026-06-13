@@ -1,13 +1,28 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  // C-2 fix: CORS restricted to specific origin. Update this to your production domain.
-  // For local dev, you can temporarily use '*' but restrict before deploying.
-  'Access-Control-Allow-Origin': Deno.env.get("ALLOWED_ORIGIN") || 'https://swaptics.vercel.app',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+const ALLOWED_ORIGINS = [
+  Deno.env.get("ALLOWED_ORIGIN"),
+  'https://swaptics.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:8080',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:8080',
+  'http://127.0.0.1:3000',
+].filter(Boolean) as string[];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0] || '*';
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+}
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,7 +35,7 @@ Deno.serve(async (req) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -28,7 +43,7 @@ Deno.serve(async (req) => {
   const { data: { user: caller } } = await supabase.auth.getUser(token);
   if (!caller) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -42,7 +57,7 @@ Deno.serve(async (req) => {
 
   if (!roleData) {
     return new Response(JSON.stringify({ error: "Forbidden: Admin access required" }), {
-      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
   // ─── End auth check ───
@@ -52,7 +67,7 @@ Deno.serve(async (req) => {
     body = await req.json();
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -60,7 +75,7 @@ Deno.serve(async (req) => {
 
   if (!email || typeof email !== "string") {
     return new Response(JSON.stringify({ error: "Valid email is required" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -86,7 +101,7 @@ Deno.serve(async (req) => {
       // M-4 FIX: Require explicit password — no hardcoded fallback
       if (!password) {
         return new Response(JSON.stringify({ error: "Password is required to create admin user" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const { data: newUser, error } = await supabase.auth.admin.createUser({
@@ -95,7 +110,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { full_name: "Admin", area: "T Nagar", gender: "male" },
       });
-      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (error) return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       await supabase.from("user_roles").upsert({ user_id: newUser.user!.id, role: "admin" }, { onConflict: "user_id,role" });
       return new Response(JSON.stringify({ success: true, userId: newUser.user!.id, action: "created_fresh" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -126,14 +141,17 @@ Deno.serve(async (req) => {
       email_confirm: true,
       user_metadata: { full_name: "Admin", area: "Other", gender: "male" },
     });
-    if (signUpError) return new Response(JSON.stringify({ error: signUpError.message }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (signUpError) return new Response(JSON.stringify({ error: signUpError.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     userId = userData?.user?.id;
   }
 
   if (!userId) {
-    return new Response(JSON.stringify({ error: "User not found. They must sign up first." }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "User not found. They must sign up first, or provide a password to create a new admin account." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
-  await supabase.from("user_roles").upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+  const { error: upsertError } = await supabase.from("user_roles").upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
+  if (upsertError) {
+    return new Response(JSON.stringify({ error: "Failed to grant admin role: " + upsertError.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
   return new Response(JSON.stringify({ success: true, userId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
