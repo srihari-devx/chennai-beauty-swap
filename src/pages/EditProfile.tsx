@@ -85,11 +85,11 @@ const EditProfile = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Location (Place in Chennai)</label>
+              <label className="text-sm font-medium text-foreground">Location (Place & City)</label>
               <Input
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
-                placeholder="e.g. T Nagar, Adyar"
+                placeholder="e.g. Koramangala, Bangalore"
                 className="bg-background"
                 required
               />

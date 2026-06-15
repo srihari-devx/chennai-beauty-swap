@@ -27,6 +27,7 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [area, setArea] = useState<string>("");
+  const [state, setState] = useState<string>("");
   const [gender, setGender] = useState("female");
 
   // TOS acceptance — H-3 fix: default to false so user must explicitly accept
@@ -120,7 +121,7 @@ const Auth = () => {
       options: {
         data: {
           full_name: fullName.trim(),
-          area,
+          area: `${area}${state ? ', ' + state : ''}`,
           gender,
         },
         emailRedirectTo: window.location.origin,
@@ -363,18 +364,33 @@ const Auth = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="area">
                         <MapPin className="inline w-3.5 h-3.5 mr-1" />
-                        Place in Chennai
+                        Place
                       </Label>
                       <Input
                         id="area"
                         type="text"
                         value={area}
                         onChange={(e) => setArea(e.target.value)}
-                        placeholder="e.g. T Nagar, Adyar"
+                        placeholder="e.g. Andheri, Koramangala"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="state">
+                        <MapPin className="inline w-3.5 h-3.5 mr-1" />
+                        State
+                      </Label>
+                      <Input
+                        id="state"
+                        type="text"
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="e.g. Maharashtra, Karnataka"
                         required
                       />
                     </div>

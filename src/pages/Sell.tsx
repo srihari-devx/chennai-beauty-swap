@@ -210,7 +210,7 @@ const Sell = () => {
           <p className="text-muted-foreground">
             {isEditMode
               ? "Update your product details below."
-              : "List your unused beauty product and connect with buyers in Chennai."}
+              : "List your unused beauty product and connect with buyers across India."}
           </p>
         </div>
 
@@ -360,10 +360,10 @@ const Sell = () => {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Place in Chennai <span className="text-destructive">*</span></Label>
+              <Label>Place & City <span className="text-destructive">*</span></Label>
               <Input
                 type="text"
-                placeholder="e.g. T Nagar, Adyar"
+                placeholder="e.g. Koramangala, Bangalore"
                 value={form.area}
                 onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
                 required

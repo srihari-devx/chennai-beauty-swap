@@ -188,9 +188,9 @@ const Browse = () => {
 
       {/* Area */}
       <div>
-        <p className="text-sm font-semibold text-foreground mb-3">Area in Chennai</p>
+        <p className="text-sm font-semibold text-foreground mb-3">Location</p>
         <Input
-          placeholder="e.g. T Nagar, Adyar"
+          placeholder="e.g. Andheri, Koramangala, T Nagar"
           value={area}
           onChange={(e) => setArea(e.target.value)}
           className="rounded-xl border-border bg-background"

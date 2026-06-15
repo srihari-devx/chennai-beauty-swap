@@ -293,7 +293,7 @@ const Index = () => {
           ) : (
             <div className="inline-flex items-center gap-2 bg-card/60 border border-primary/20 rounded-full px-4 py-1.5 text-sm text-primary font-medium mb-6 shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
-              Chennai's #1 Beauty Marketplace
+              India's #1 Beauty Marketplace
             </div>
           )}
           <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
@@ -302,7 +302,7 @@ const Index = () => {
             Reduce Waste.
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed">
-            Chennai's hyperlocal marketplace to buy, sell, and swap unused cosmetics.
+            India's hyperlocal marketplace to buy, sell, and swap unused cosmetics.
             Connect with beauty lovers in your area — no payments, no delivery hassle.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -316,7 +316,7 @@ const Index = () => {
             </Button>
           </div>
           <div className="mt-10 flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-primary" /> Chennai Only</div>
+            <div className="flex items-center gap-1.5"><MapPin className="w-4 h-4 text-primary" /> All Across India</div>
             <div className="flex items-center gap-1.5"><Shield className="w-4 h-4 text-primary" /> Safe & Verified</div>
             <div className="flex items-center gap-1.5"><MessageCircle className="w-4 h-4 text-primary" /> In-App Chat</div>
           </div>
@@ -334,7 +334,7 @@ const Index = () => {
             {[
               { step: "1", icon: "📸", title: "List Your Product", desc: "Upload photos, set your price, and list your unused beauty products in minutes." },
               { step: "2", icon: "💬", title: "Chat with Buyer", desc: "Connect directly with interested buyers through our in-app chat — safe and simple." },
-              { step: "3", icon: "🤝", title: "Meet & Swap", desc: "Arrange to meet in a safe public place in Chennai to complete the exchange." },
+              { step: "3", icon: "🤝", title: "Meet & Swap", desc: "Arrange to meet in a safe public place in your city to complete the exchange." },
             ].map((item, i) => (
               <div key={i} className="relative text-center p-6 rounded-2xl bg-background border border-border shadow-card hover:shadow-beauty transition-all duration-300 group">
                 <div className="w-14 h-14 mx-auto mb-4 rounded-2xl gradient-cta flex items-center justify-center text-2xl shadow-sm group-hover:scale-105 transition-transform">
@@ -420,7 +420,7 @@ const Index = () => {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2 className="font-display text-3xl font-bold text-foreground mb-1">Recently Added</h2>
-              <p className="text-muted-foreground">Fresh listings from Chennai</p>
+              <p className="text-muted-foreground">Fresh listings from across India</p>
             </div>
             <Button variant="ghost" asChild className="flex items-center gap-1 text-primary">
               <Link to="/browse">See All <ChevronRight className="w-4 h-4" /></Link>
@@ -550,7 +550,7 @@ const Index = () => {
             {[
               {
                 q: "What is Swaptics?",
-                a: "Swaptics is Chennai's hyperlocal marketplace for buying, selling, and swapping unused or gently-used beauty products. We connect beauty lovers in the same area so you can meet up safely — no shipping, no payment gateway."
+                a: "Swaptics is India's hyperlocal marketplace for buying, selling, and swapping unused or gently-used beauty products. We connect beauty lovers in the same area so you can meet up safely — no shipping, no payment gateway."
               },
               {
                 q: "Is Swaptics free to use?",
@@ -574,7 +574,7 @@ const Index = () => {
               },
               {
                 q: "What areas does Swaptics cover?",
-                a: "Swaptics currently operates across major areas in Chennai — T Nagar, Velachery, Anna Nagar, Adyar, OMR, Mylapore, and many more. You can also enter any custom location within Chennai."
+                a: "Swaptics currently operates across major cities and towns in India — Delhi, Mumbai, Bangalore, Chennai, Hyderabad, Kolkata, and many more. You can enter any location within India."
               },
             ].map((faq, i) => (
               <FaqItem key={i} question={faq.q} answer={faq.a} />
@@ -589,7 +589,7 @@ const Index = () => {
           <div className="p-10 rounded-3xl gradient-cta text-white shadow-beauty">
             <h2 className="font-display text-3xl font-bold mb-3">Join Swaptics</h2>
             <p className="text-white/80 mb-6 text-lg">
-              Join thousands of Chennai beauty lovers buying and selling smart.
+              Join thousands of beauty lovers across India buying and selling smart.
             </p>
             <Button size="lg" asChild className="bg-white text-primary font-semibold hover:bg-white/90 rounded-xl px-8">
               <Link to="/auth?mode=signup">

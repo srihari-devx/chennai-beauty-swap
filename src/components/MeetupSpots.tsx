@@ -3,16 +3,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState } from "react";
 
 const MEETUP_SPOTS = [
-  { name: "Express Avenue Mall", area: "Royapettah", type: "Mall" },
-  { name: "Phoenix Marketcity", area: "Velachery", type: "Mall" },
-  { name: "Forum Vijaya Mall", area: "Vadapalani", type: "Mall" },
-  { name: "VR Chennai Mall", area: "Anna Nagar", type: "Mall" },
-  { name: "Koyambedu Metro Station", area: "Koyambedu", type: "Metro" },
-  { name: "T Nagar Metro Station", area: "T Nagar", type: "Metro" },
-  { name: "Alandur Metro Station", area: "Alandur", type: "Metro" },
-  { name: "Spencer Plaza", area: "Anna Salai", type: "Mall" },
-  { name: "Starbucks, Nungambakkam", area: "Nungambakkam", type: "Café" },
-  { name: "Ampa Skywalk Mall", area: "Aminjikarai", type: "Mall" },
+  { name: "Phoenix Marketcity", area: "Mumbai", type: "Mall" },
+  { name: "Select Citywalk", area: "Delhi", type: "Mall" },
+  { name: "Orion Mall", area: "Bangalore", type: "Mall" },
+  { name: "Express Avenue Mall", area: "Chennai", type: "Mall" },
+  { name: "Inorbit Mall", area: "Hyderabad", type: "Mall" },
+  { name: "South City Mall", area: "Kolkata", type: "Mall" },
+  { name: "Lulu Mall", area: "Kochi", type: "Mall" },
+  { name: "Elante Mall", area: "Chandigarh", type: "Mall" },
+  { name: "Starbucks (any city)", area: "Pan India", type: "Café" },
+  { name: "Metro Stations", area: "Pan India", type: "Metro" },
 ];
 
 const MeetupSpots = () => {
@@ -23,7 +23,7 @@ const MeetupSpots = () => {
       <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors border border-border">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <MapPin className="w-4 h-4 text-primary" />
-          Suggested Safe Meetup Spots in Chennai
+          Suggested Safe Meetup Spots in India
         </div>
         <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </CollapsibleTrigger>

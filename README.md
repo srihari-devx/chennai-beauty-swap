@@ -1,6 +1,6 @@
 # Swaptics
 
-A beauty product swap platform for Chennai, built with modern web technologies.
+A beauty product swap platform for India, built with modern web technologies.
 
 ## Tech Stack
 
