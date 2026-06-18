@@ -2,6 +2,20 @@
 
 A beauty product swap platform for India, built with modern web technologies.
 
+---
+
+## 📖 Developer Documentation Hub
+
+For details regarding software design, database schemas, and codebase workflows, explore our documentation guides:
+
+- **[Documentation Index](docs/README.md)**: Master directory and file map.
+- **[System Architecture](docs/ARCHITECTURE.md)**: Front-end code-splitting, routing structure, state contexts, and styling guidelines.
+- **[Database Schema & Security](docs/DATABASE_SCHEMA.md)**: Tables blueprint, custom Postgres types/triggers, and Supabase RLS security policies.
+- **[Functional Features Guide](docs/FEATURES_GUIDE.md)**: Walkthroughs of OTP logins, marketplace filters, real-time chats, trust scores, and admin modules.
+- **[Maintenance & Extension Checklist](docs/MAINTENANCE.md)**: Local start commands, migration policies, Edge Functions deployments, and code-review expansion playbook.
+
+---
+
 ## Tech Stack
 
 - **Vite** — Fast build tool & dev server
