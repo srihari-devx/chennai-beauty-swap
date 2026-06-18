@@ -64,6 +64,7 @@ const CarouselDots = ({ api }: { api: CarouselApi | undefined }) => {
         <button
           key={idx}
           onClick={() => api?.scrollTo(idx)}
+          aria-label={`Go to slide ${idx + 1}`}
           className={`rounded-full transition-all duration-300 ${
             idx === selectedIndex
               ? "w-6 h-2 bg-primary"
@@ -91,6 +92,8 @@ const ArticleImage = ({ src, alt, className }: { src: string; alt: string; class
       src={src}
       alt={alt}
       className={className}
+      loading="lazy"
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setError(true)}
     />
@@ -274,6 +277,7 @@ const Index = () => {
             <div className="mb-6 flex flex-col items-center gap-2">
               <button
                 onClick={() => setShowEmail((v) => !v)}
+                aria-label={showEmail ? "Hide email address" : "Show email address"}
                 className="inline-flex items-center gap-2 bg-card/70 border border-primary/20 rounded-full px-5 py-2 text-sm font-medium shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
               >
                 <div className="w-6 h-6 rounded-full gradient-cta flex items-center justify-center text-white text-[10px] font-bold">
@@ -464,7 +468,7 @@ const Index = () => {
                     key={article.id}
                     className="pl-3 basis-full sm:basis-1/2 lg:basis-1/3"
                   >
-                    <Link to="/articles" className="group block">
+                    <Link to={`/articles/${article.id}`} className="group block">
                       <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden hover:shadow-beauty transition-all duration-300 group-hover:-translate-y-1 h-full flex flex-col">
                         {/* Cover image */}
                         <div className="w-full h-40 overflow-hidden bg-muted">
@@ -530,7 +534,7 @@ const Index = () => {
               <div key={i} className="flex gap-4 p-5 rounded-2xl bg-background border border-border shadow-card">
                 <span className="text-2xl flex-shrink-0 mt-0.5">{tip.icon}</span>
                 <div>
-                  <h4 className="font-semibold text-foreground mb-1">{tip.title}</h4>
+                  <h3 className="font-semibold text-foreground mb-1 text-base">{tip.title}</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed">{tip.desc}</p>
                 </div>
               </div>
@@ -610,7 +614,9 @@ const Index = () => {
       <div className="bg-muted/50 border-t border-border px-4 py-4 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           ⚠️ <strong>Disclaimer:</strong> This platform only connects buyers and sellers. We are not responsible for product authenticity, allergic reactions, or transaction disputes. Meet only in public places. By using Swaptics, you agree to our{" "}
-          <Link to="/terms" className="text-primary hover:underline font-medium">terms of service</Link>.
+          <Link to="/terms" className="text-primary hover:underline font-medium">terms of service</Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="text-primary hover:underline font-medium">privacy policy</Link>.
         </p>
       </div>
     </div>

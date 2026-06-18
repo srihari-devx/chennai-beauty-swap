@@ -150,6 +150,8 @@ const FeedbackForm = () => {
                   key={cat.value}
                   type="button"
                   onClick={() => setCategory(cat.value)}
+                  aria-label={`Select category: ${cat.label}`}
+                  aria-pressed={category === cat.value}
                   className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 text-center ${
                     category === cat.value
                       ? cat.color + " border-current shadow-sm scale-[1.02]"
@@ -176,6 +178,7 @@ const FeedbackForm = () => {
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoveredRating(star)}
                   onMouseLeave={() => setHoveredRating(0)}
+                  aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
                   className="p-0.5 transition-transform duration-150 hover:scale-110"
                 >
                   <Star

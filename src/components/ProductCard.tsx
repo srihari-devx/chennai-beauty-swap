@@ -21,6 +21,7 @@ interface ProductCardProps {
     category: string;
     seller_id: string;
     previous_price?: number | null;
+    original_price?: number | null;
     price_reduced_at?: string | null;
     profiles?: { full_name: string; area: string; is_verified?: boolean } | null;
   };
@@ -56,6 +57,8 @@ const ProductCard = ({ product, showChatButton = true, isWishlisted = false, onT
             <img
               src={imageUrl}
               alt={product.name}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
@@ -104,7 +107,17 @@ const ProductCard = ({ product, showChatButton = true, isWishlisted = false, onT
               </div>
               <p className="text-sm font-semibold text-foreground truncate">{product.name}</p>
             </div>
-            <p className="text-primary font-bold text-sm whitespace-nowrap">₹{product.selling_price}</p>
+            <div className="text-right flex-shrink-0">
+              <p className="text-primary font-bold text-sm whitespace-nowrap">₹{product.selling_price}</p>
+              {product.original_price && product.original_price > product.selling_price && (
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                  <span className="text-[10px] text-muted-foreground line-through">₹{product.original_price}</span>
+                  <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-100 px-1 py-0.5 rounded">
+                    {Math.round(((product.original_price - product.selling_price) / product.original_price) * 100)}% saved
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-between gap-2 mb-3">

@@ -7,10 +7,7 @@ import {
   ArrowRight,
   Newspaper,
   Calendar,
-  User,
   Tag,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 
 interface Article {
@@ -73,7 +70,6 @@ const Articles = () => {
   const { user } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchArticles = async () => {
@@ -91,10 +87,6 @@ const Articles = () => {
     };
     fetchArticles();
   }, []);
-
-  const toggleExpand = (id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,79 +145,72 @@ const Articles = () => {
           ) : (
             <div className="space-y-6">
               {articles.map((article, idx) => {
-                const isExpanded = expandedId === article.id;
                 return (
                   <article
                     key={article.id}
-                    className="bg-card rounded-2xl border border-border shadow-card overflow-hidden hover:shadow-beauty transition-all duration-300 animate-fade-in"
+                    className="bg-card rounded-2xl border border-border shadow-card overflow-hidden hover:shadow-beauty transition-all duration-300 animate-fade-in group flex flex-col md:flex-row"
                     style={{ animationDelay: `${idx * 60}ms` }}
                   >
                     {/* Cover image */}
-                    <div className="w-full h-48 md:h-56 overflow-hidden">
-                      <ArticleImage
-                        src={article.cover_image_url || ""}
-                        alt={article.title}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-full md:w-1/3 min-h-[160px] md:h-auto overflow-hidden bg-muted">
+                      <Link to={`/articles/${article.id}`} className="block h-full">
+                        <ArticleImage
+                          src={article.cover_image_url || ""}
+                          alt={article.title}
+                          className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
+                        />
+                      </Link>
                     </div>
 
-                    <div className="p-6">
-                      {/* Meta row */}
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
-                        {article.category && (
-                          <span
-                            className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full ${getCategoryColor(
-                              article.category
-                            )}`}
-                          >
-                            <Tag className="w-2.5 h-2.5 inline mr-1" />
-                            {formatCategory(article.category)}
-                          </span>
-                        )}
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(article.created_at).toLocaleDateString(
-                            "en-IN",
-                            {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            }
+                    <div className="p-6 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Meta row */}
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          {article.category && (
+                            <span
+                              className={`text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full ${getCategoryColor(
+                                article.category
+                              )}`}
+                            >
+                              <Tag className="w-2.5 h-2.5 inline mr-1" />
+                              {formatCategory(article.category)}
+                            </span>
                           )}
-                        </span>
-                      </div>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(article.created_at).toLocaleDateString(
+                              "en-IN",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )}
+                          </span>
+                        </div>
 
-                      {/* Title */}
-                      <h2 className="font-display text-xl md:text-2xl font-bold text-foreground mb-3 leading-snug">
-                        {article.title}
-                      </h2>
+                        {/* Title */}
+                        <h2 className="font-display text-xl md:text-2xl font-bold text-foreground mb-3 leading-snug group-hover:text-primary transition-colors">
+                          <Link to={`/articles/${article.id}`}>
+                            {article.title}
+                          </Link>
+                        </h2>
 
-                      {/* Excerpt or Content */}
-                      {!isExpanded ? (
+                        {/* Excerpt */}
                         <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
                           {article.excerpt || article.content.slice(0, 200) + "..."}
                         </p>
-                      ) : (
-                        <div className="text-foreground text-sm leading-relaxed whitespace-pre-line">
-                          {article.content}
-                        </div>
-                      )}
+                      </div>
 
-                      {/* Read more / less toggle */}
-                      <button
-                        onClick={() => toggleExpand(article.id)}
-                        className="mt-4 inline-flex items-center gap-1.5 text-primary text-sm font-medium hover:underline transition-colors"
-                      >
-                        {isExpanded ? (
-                          <>
-                            Show Less <ChevronUp className="w-4 h-4" />
-                          </>
-                        ) : (
-                          <>
-                            Read More <ChevronDown className="w-4 h-4" />
-                          </>
-                        )}
-                      </button>
+                      {/* Read more link */}
+                      <div>
+                        <Link
+                          to={`/articles/${article.id}`}
+                          className="mt-4 inline-flex items-center gap-1.5 text-primary text-sm font-semibold hover:underline transition-all"
+                        >
+                          Read More <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+                      </div>
                     </div>
                   </article>
                 );
