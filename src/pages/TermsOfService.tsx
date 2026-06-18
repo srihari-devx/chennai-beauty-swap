@@ -1,11 +1,20 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, ScrollText, Users, ShieldCheck, Package, AlertTriangle,
-  CreditCard, Truck, Ban, Scale, Fingerprint, UserX, RefreshCw, Mail
+  CreditCard, Truck, Ban, Scale, Fingerprint, UserX, RefreshCw, Mail,
+  ClipboardList, Database, Share2, Lock, Clock, Cookie, UserCheck, Baby
 } from "lucide-react";
 
-const sections = [
+interface LegalSection {
+  id: number;
+  title: string;
+  icon: React.ComponentType<any>;
+  content: string;
+}
+
+const termsSections: LegalSection[] = [
   {
     id: 1,
     title: "Introduction",
@@ -92,7 +101,101 @@ const sections = [
   },
 ];
 
-const TermsOfService = () => {
+const privacySections: LegalSection[] = [
+  {
+    id: 1,
+    title: "Introduction",
+    icon: ShieldCheck,
+    content: `Welcome to Swaptics ("Platform", "we", "us", "our").\n\nYour privacy is important to us. This Privacy Policy explains how we collect, use, store, and protect your personal information when you use our platform.\n\nBy using the Platform, you agree to the terms of this Privacy Policy.`,
+  },
+  {
+    id: 2,
+    title: "Information We Collect",
+    icon: ClipboardList,
+    content: `When you use our Platform, we may collect:\n\n• Full name\n• Email address\n• Gender\n• Area of living`,
+  },
+  {
+    id: 3,
+    title: "How We Use Your Information",
+    icon: Database,
+    content: `We use your data to:\n\n• Create and manage your account\n• Resolve disputes and provide support\n• Improve platform functionality and user experience\n• Prevent fraud and ensure safety`,
+  },
+  {
+    id: 4,
+    title: "Sharing of Information",
+    icon: Share2,
+    content: `We do not sell your personal data.\n\nWe do not share your information with any third parties, except:\n\n• Legal Authorities — If required by law or to protect our rights and users.`,
+  },
+  {
+    id: 5,
+    title: "Data Storage & Security",
+    icon: Lock,
+    content: `We take reasonable measures to protect your data, including:\n\n• Encryption of sensitive information\n• Secure servers and access controls\n• Restricted access to personal data\n\nHowever, no system is 100% secure.`,
+  },
+  {
+    id: 6,
+    title: "Data Retention",
+    icon: Clock,
+    content: `We retain your information as long as your account is active.\n\nYou may request deletion of your account (see Section 8).`,
+  },
+  {
+    id: 7,
+    title: "Cookies & Tracking",
+    icon: Cookie,
+    content: `We may use cookies and similar technologies to:\n\n• Improve user experience\n• Analyze usage patterns\n• Remember preferences\n\nYou can control cookies through your browser settings.`,
+  },
+  {
+    id: 8,
+    title: "Your Rights",
+    icon: UserCheck,
+    content: `You have the right to:\n\n• Access your personal data\n• Update or correct information\n• Request account deletion\n• Opt out of marketing communications\n\nTo exercise these rights, contact us at:\n📧 swaptics.beauty.store@gmail.com`,
+  },
+  {
+    id: 9,
+    title: "Children's Privacy",
+    icon: Baby,
+    content: `The Platform is not intended for users under 18 years of age. We do not knowingly collect data from minors.`,
+  },
+  {
+    id: 10,
+    title: "Changes to This Policy",
+    icon: RefreshCw,
+    content: `We may update this Privacy Policy from time to time. Continued use of the Platform means you accept the updated policy.`,
+  },
+  {
+    id: 11,
+    title: "Contact Us",
+    icon: Mail,
+    content: `If you have any questions, contact us:\n\n📧 Email: swaptics.beauty.store@gmail.com`,
+  },
+];
+
+interface TermsOfServiceProps {
+  defaultTab?: "terms" | "privacy";
+}
+
+const TermsOfService = ({ defaultTab = "terms" }: TermsOfServiceProps) => {
+  const [activeTab, setActiveTab] = useState<"terms" | "privacy">(defaultTab);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
+  const handleTabChange = (tab: "terms" | "privacy") => {
+    setActiveTab(tab);
+    navigate(tab === "terms" ? "/terms" : "/privacy");
+  };
+
+  const isTerms = activeTab === "terms";
+  const currentSections = isTerms ? termsSections : privacySections;
+  const title = isTerms ? "Terms of Service" : "Privacy Policy";
+  const subtitle = isTerms
+    ? "Please read these terms carefully before using Swaptics. By using our platform, you agree to these terms."
+    : "Your privacy matters to us. Learn how Swaptics collects, uses, and protects your personal information.";
+  const lastUpdated = isTerms ? "Last updated: April 2026" : "Last updated: June 2026";
+  const HeroIcon = isTerms ? ScrollText : ShieldCheck;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Header */}
@@ -103,18 +206,17 @@ const TermsOfService = () => {
         </div>
         <div className="container max-w-3xl mx-auto relative z-10 animate-fade-in">
           <div className="inline-flex items-center gap-2 bg-card/60 border border-primary/20 rounded-full px-4 py-1.5 text-sm text-primary font-medium mb-6 shadow-sm">
-            <ScrollText className="w-3.5 h-3.5" />
+            <HeroIcon className="w-3.5 h-3.5" />
             Legal Document
           </div>
           <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4 leading-tight">
-            Terms of Service
+            {title}
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Please read these terms carefully before using Swaptics.
-            By using our platform, you agree to these terms.
+            {subtitle}
           </p>
           <p className="text-xs text-muted-foreground mt-4">
-            Last updated: April 2026
+            {lastUpdated}
           </p>
         </div>
       </section>
@@ -122,13 +224,41 @@ const TermsOfService = () => {
       {/* Content */}
       <section className="py-12 px-4">
         <div className="container max-w-3xl mx-auto">
-          <div className="space-y-5">
-            {sections.map((section, idx) => {
+          {/* Tab Segmented Control */}
+          <div className="flex justify-center mb-10">
+            <div className="inline-flex p-1 bg-muted border border-border rounded-xl shadow-inner">
+              <button
+                type="button"
+                onClick={() => handleTabChange("terms")}
+                className={`px-6 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                  isTerms
+                    ? "bg-background text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Terms of Service
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTabChange("privacy")}
+                className={`px-6 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                  !isTerms
+                    ? "bg-background text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Privacy Policy
+              </button>
+            </div>
+          </div>
+
+          <div key={activeTab} className="space-y-5 animate-fade-in">
+            {currentSections.map((section, idx) => {
               const Icon = section.icon;
               return (
                 <div
                   key={section.id}
-                  className="bg-card rounded-2xl border border-border shadow-card p-6 hover:shadow-beauty transition-all duration-300 animate-fade-in"
+                  className="bg-card rounded-2xl border border-border shadow-card p-6 hover:shadow-beauty transition-all duration-300"
                   style={{ animationDelay: `${idx * 40}ms` }}
                 >
                   <div className="flex items-start gap-4">
@@ -153,7 +283,7 @@ const TermsOfService = () => {
           </div>
 
           {/* Back button */}
-          <div className="mt-10 text-center">
+          <div className="mt-12 text-center">
             <Button
               variant="outline"
               asChild

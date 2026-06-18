@@ -20,7 +20,6 @@ const ChatWindow = lazy(() => import("./pages/Chat").then(m => ({ default: m.Cha
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Admin = lazy(() => import("./pages/Admin"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Articles = lazy(() => import("./pages/Articles"));
 const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
@@ -87,8 +86,8 @@ const App = () => (
                         <Admin />
                       </ProtectedRoute>
                     } />
-                    <Route path="/terms" element={<TermsOfService />} />
-                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                    <Route path="/terms" element={<TermsOfService defaultTab="terms" />} />
+                    <Route path="/privacy" element={<TermsOfService defaultTab="privacy" />} />
                     <Route path="/articles" element={<Articles />} />
                     <Route path="/articles/:id" element={<ArticleDetail />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
