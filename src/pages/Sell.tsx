@@ -6,8 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Upload, X, Camera, ArrowLeft, Lightbulb } from "lucide-react";
-import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS } from "@/lib/constants";
+import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS, INDIAN_STATES } from "@/lib/constants";
 import { toast } from "sonner";
+
+const parseArea = (areaString: string) => {
+  if (!areaString) return { city: "", state: "" };
+  const parts = areaString.split(",");
+  if (parts.length >= 2) {
+    const statePart = parts[parts.length - 1].trim();
+    const cityPart = parts.slice(0, parts.length - 1).join(",").trim();
+    return { city: cityPart, state: statePart };
+  }
+  return { city: areaString.trim(), state: "" };
+};
 
 const Sell = () => {
   const navigate = useNavigate();
@@ -30,11 +41,15 @@ const Sell = () => {
     expiry_date: "",
     original_price: "",
     selling_price: "",
-    area: profile?.area || "",
+    city: "",
+    state: "",
   });
 
   useEffect(() => {
-    if (profile?.area && !isEditMode) setForm(f => ({ ...f, area: profile.area }));
+    if (profile?.area && !isEditMode) {
+      const { city, state } = parseArea(profile.area);
+      setForm(f => ({ ...f, city, state }));
+    }
   }, [profile]);
 
   // Fetch existing product data in edit mode
@@ -61,6 +76,7 @@ const Sell = () => {
         return;
       }
 
+      const { city, state } = parseArea(product.area || "");
       setForm({
         brand: product.brand,
         name: product.name,
@@ -70,7 +86,8 @@ const Sell = () => {
         original_price: String(product.original_price),
         selling_price: String(product.selling_price),
         reason_for_selling: product.reason_for_selling || "",
-        area: product.area,
+        city,
+        state,
       });
       setExistingImages(product.images || []);
       setOriginalSellingPrice(Number(product.selling_price));
@@ -134,6 +151,8 @@ const Sell = () => {
       const allImages = [...keptExisting, ...newImageUrls];
       const newSellingPrice = parseFloat(form.selling_price);
 
+      const fullArea = `${form.city.trim()}, ${form.state}`;
+
       if (isEditMode && id) {
         // Track price reduction
         const updateData: any = {
@@ -146,7 +165,7 @@ const Sell = () => {
           selling_price: newSellingPrice,
           reason_for_selling: form.reason_for_selling || null,
           images: allImages,
-          area: form.area as any,
+          area: fullArea as any,
         };
 
         // If price was reduced, track it
@@ -171,7 +190,7 @@ const Sell = () => {
           selling_price: newSellingPrice,
           reason_for_selling: form.reason_for_selling || null,
           images: allImages,
-          area: form.area as any,
+          area: fullArea as any,
         });
         if (error) throw error;
         toast.success("Product listed successfully! 🎉");
@@ -359,16 +378,30 @@ const Sell = () => {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label>Place & City <span className="text-destructive">*</span></Label>
-              <Input
-                type="text"
-                placeholder="e.g. Koramangala, Bangalore"
-                value={form.area}
-                onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
-                required
-                className="rounded-xl"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>City <span className="text-destructive">*</span></Label>
+                <Input
+                  type="text"
+                  placeholder="e.g. Bangalore, Mumbai"
+                  value={form.city}
+                  onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                  required
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>State <span className="text-destructive">*</span></Label>
+                <select
+                  value={form.state}
+                  onChange={e => setForm(f => ({ ...f, state: e.target.value }))}
+                  required
+                  className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="" disabled>Select State</option>
+                  {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
             </div>
 
             <div className="space-y-1.5">

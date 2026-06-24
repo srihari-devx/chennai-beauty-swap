@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { cleanImageUrl } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useSEO } from "@/hooks/useSEO";
 import { Button } from "@/components/ui/button";
@@ -67,10 +68,9 @@ const ArticleImage = ({ src, alt, className }: { src: string; alt: string; class
 
   return (
     <img
-      src={src}
+      src={cleanImageUrl(src)}
       alt={alt}
       className={className}
-      referrerPolicy="no-referrer"
       onError={() => setError(true)}
     />
   );

@@ -4,21 +4,36 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Save } from "lucide-react";
+import { INDIAN_STATES } from "@/lib/constants";
 
+const parseArea = (areaString: string) => {
+  if (!areaString) return { city: "", state: "" };
+  const parts = areaString.split(",");
+  if (parts.length >= 2) {
+    const statePart = parts[parts.length - 1].trim();
+    const cityPart = parts.slice(0, parts.length - 1).join(",").trim();
+    return { city: cityPart, state: statePart };
+  }
+  return { city: areaString.trim(), state: "" };
+};
 
 const EditProfile = () => {
   const { user, profile, fetchProfile } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
-  const [area, setArea] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || "");
-      setArea(profile.area || "");
+      const { city: parsedCity, state: parsedState } = parseArea(profile.area || "");
+      setCity(parsedCity);
+      setState(parsedState);
     }
   }, [profile]);
 
@@ -31,12 +46,23 @@ const EditProfile = () => {
       return;
     }
 
+    if (!city.trim()) {
+      toast.error("City is required");
+      return;
+    }
+
+    if (!state) {
+      toast.error("State is required");
+      return;
+    }
+
     setLoading(true);
+    const fullArea = `${city.trim()}, ${state}`;
     const { error } = await supabase
       .from("profiles")
       .update({
         full_name: fullName.trim(),
-        area,
+        area: fullArea,
       })
       .eq("user_id", user.id);
 
@@ -85,14 +111,31 @@ const EditProfile = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Location (Place & City)</label>
+              <Label className="text-sm font-medium text-foreground">City</Label>
               <Input
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                placeholder="e.g. Koramangala, Bangalore"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Bangalore, Mumbai"
                 className="bg-background"
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-foreground">State</Label>
+              <select
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                required
+              >
+                <option value="" disabled>Select State</option>
+                {INDIAN_STATES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <Button

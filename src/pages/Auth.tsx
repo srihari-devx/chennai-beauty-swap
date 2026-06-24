@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, User, ArrowRight, Lock, MapPin, Users, ScrollText } from "lucide-react";
 import { toast } from "sonner";
+import { INDIAN_STATES } from "@/lib/constants";
 
 type AuthMode = "signin" | "signup";
 
@@ -30,8 +31,7 @@ const Auth = () => {
   const [state, setState] = useState<string>("");
   const [gender, setGender] = useState("female");
 
-  // TOS acceptance — H-3 fix: default to false so user must explicitly accept
-  const [tosAccepted, setTosAccepted] = useState(false);
+
 
   // Post-signup state
   const [signupDone, setSignupDone] = useState(false);
@@ -50,10 +50,6 @@ const Auth = () => {
 
   /* ───────── GOOGLE SIGN IN ───────── */
   const handleGoogleSignIn = async () => {
-    if (!tosAccepted) {
-      toast.error("You must accept the Terms of Service before signing in.");
-      return;
-    }
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -65,14 +61,12 @@ const Auth = () => {
       toast.error(error.message);
       setLoading(false);
     }
-    // Note: redirect happens automatically so no need to setLoading(false) on success
   };
 
   /* ───────── SIGN IN ───────── */
   const handleSignIn = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!tosAccepted) { toast.error("You must accept the Terms of Service before signing in."); return; }
     if (!normalizedEmail) { toast.error("Please enter your email."); return; }
     if (!password) { toast.error("Please enter your password."); return; }
 
@@ -102,7 +96,6 @@ const Auth = () => {
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
 
-    if (!tosAccepted) { toast.error("You must accept the Terms of Service before creating an account."); return; }
     if (!fullName.trim()) { toast.error("Please enter your full name."); return; }
     if (!normalizedEmail) { toast.error("Please enter your email."); return; }
     if (password.length < MIN_PASSWORD_LENGTH) {
@@ -227,46 +220,36 @@ const Auth = () => {
                 </button>
               </div>
 
-              {/* Terms of Service Checkbox */}
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-                <input
-                  type="checkbox"
-                  id="tosAccept"
-                  checked={tosAccepted}
-                  onChange={(e) => setTosAccepted(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-primary text-primary focus:ring-primary cursor-pointer accent-primary"
-                />
-                <label htmlFor="tosAccept" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-                  I have read and agree to the{" "}
-                  <Link to="/terms" target="_blank" className="text-primary font-medium hover:underline inline-flex items-center gap-0.5">
-                    <ScrollText className="w-3 h-3" />
+              {/* Google Auth Button */}
+              <div className="flex flex-col gap-1.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="w-full h-12 rounded-xl text-base font-medium relative hover:bg-muted/50 transition-colors border-2"
+                >
+                  {loading ? (
+                    <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5 absolute left-4" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                      </svg>
+                      Continue with Google
+                    </>
+                  )}
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  * By continuing, you agree to our{" "}
+                  <Link to="/terms" target="_blank" className="text-primary hover:underline font-medium">
                     Terms of Service
                   </Link>
-                </label>
+                </p>
               </div>
-
-              {/* Google Auth Button */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleGoogleSignIn}
-                disabled={loading || !tosAccepted}
-                className={`w-full h-12 rounded-xl text-base font-medium relative hover:bg-muted/50 transition-colors border-2 ${!tosAccepted ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                {loading ? (
-                  <div className="w-5 h-5 border-2 border-foreground border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <svg className="w-5 h-5 absolute left-4" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                    Continue with Google
-                  </>
-                )}
-              </Button>
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -312,20 +295,28 @@ const Auth = () => {
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
-                  >
-                    {loading ? (
-                      <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Sign In
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex flex-col gap-1.5">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
+                    >
+                      {loading ? (
+                        <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Sign In
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      * By signing in, you agree to our{" "}
+                      <Link to="/terms" target="_blank" className="text-primary hover:underline font-medium">
+                        Terms of Service
+                      </Link>
+                    </p>
+                  </div>
                 </form>
               ) : (
                 /* ─── SIGN UP FORM ─── */
@@ -366,14 +357,14 @@ const Auth = () => {
                     <div className="space-y-2">
                       <Label htmlFor="area">
                         <MapPin className="inline w-3.5 h-3.5 mr-1" />
-                        Place
+                        City
                       </Label>
                       <Input
                         id="area"
                         type="text"
                         value={area}
                         onChange={(e) => setArea(e.target.value)}
-                        placeholder="e.g. Andheri, Koramangala"
+                        placeholder="e.g. Mumbai, Bangalore"
                         required
                       />
                     </div>
@@ -383,14 +374,20 @@ const Auth = () => {
                         <MapPin className="inline w-3.5 h-3.5 mr-1" />
                         State
                       </Label>
-                      <Input
+                      <select
                         id="state"
-                        type="text"
                         value={state}
                         onChange={(e) => setState(e.target.value)}
-                        placeholder="e.g. Maharashtra, Karnataka"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         required
-                      />
+                      >
+                        <option value="" disabled>Select State</option>
+                        {INDIAN_STATES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="space-y-2">
@@ -446,20 +443,28 @@ const Auth = () => {
                     </div>
                   </div>
 
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
-                  >
-                    {loading ? (
-                      <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Create Account
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex flex-col gap-1.5">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full h-12 rounded-xl text-base font-medium gradient-cta text-primary-foreground border-0"
+                    >
+                      {loading ? (
+                        <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          Create Account
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                      * By signing up, you agree to our{" "}
+                      <Link to="/terms" target="_blank" className="text-primary hover:underline font-medium">
+                        Terms of Service
+                      </Link>
+                    </p>
+                  </div>
                 </form>
               )}
             </>
@@ -470,7 +475,7 @@ const Auth = () => {
           <p className="text-center text-xs text-muted-foreground mt-6 leading-relaxed bg-card/50 p-3 rounded-xl border border-border pb-safe">
             {mode === "signin"
               ? "Don't have an account? Switch to Sign Up above to get started."
-              : <>By signing up, you agree to our <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>. Make sure to complete your profile after signing in via Google so others know your area!</>}
+              : "Make sure to complete your profile after signing in via Google so others know your area!"}
           </p>
         )}
       </div>

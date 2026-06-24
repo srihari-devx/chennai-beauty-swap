@@ -1,0 +1,64 @@
+# Swaptics
+
+Swaptics is India's #1 hyperlocal beauty product swap and marketplace platform. It allows users to list, discover, swap, buy, and sell unused or gently used cosmetics, skincare, and fragrance products within their local areas in India.
+
+## Core Objectives
+- **Reduce waste**: Enable swapping of unused/unopened cosmetics.
+- **Hyperlocal search**: Filter listings by Indian states to trade items locally.
+- **Safe swaps**: Safe meetups in public places with integrated live chat.
+
+---
+
+## Tech Stack & Architecture
+
+- **Front-end**: React 18, TypeScript, Vite (bundling), Tailwind CSS (styling), shadcn/ui components.
+- **Routing**: Client-side routing via `react-router-dom` with lazy loading on all pages.
+- **Database & Backend**: Supabase (PostgreSQL), Row Level Security (RLS) policies, Storage Buckets, Database triggers.
+- **State Management**: Context-based authentication state via `AuthContext.tsx` and theme state via `ThemeContext.tsx`.
+
+---
+
+## Major Routes & Pages
+
+- **`/` (Index)**: Landing page featuring active statistics, safety recommendations, and local featured products.
+- **`/auth`**: Authentication flow (Google OAuth, traditional email sign-up/sign-in). Contains automatic terms agreement.
+- **`/browse`**: Search and filtering hub. Filter products by:
+  - Text search (title, brand, reason for selling)
+  - Category (Foundation, Lipstick, Skincare, Fragrance, Nails, Eyeshadow, Blush, Concealer, Mascara)
+  - Condition (Sealed, Opened Once, Swatched)
+  - State (Dropdown select containing all states of India)
+  - Price range (MRP discount ranges)
+- **`/sell`**: Listing portal to upload up to 5 photos, state details (brand, name, condition, original/selling price, expiry date, city, and state dropdown selection).
+- **`/dashboard`**: Seller's personal dashboard tracking listings, ratings, and saved items.
+- **`/chats`**: Live real-time chat interface connecting buyers and sellers directly.
+- **`/profile/edit`**: Profile updates page supporting city and state customization.
+- **`/terms`**: Terms of Service and Privacy Policies.
+- **`/articles`**: Dynamic blog and beauty tips publishing center.
+
+---
+
+## Key Developer & Database Resources
+
+### Profiles Table (`profiles`)
+Tracks user public profiles, including:
+- `user_id` (foreign key to `auth.users`)
+- `full_name`
+- `area` (saved in database as `City, State` text format)
+
+### Products Table (`products`)
+Tracks beauty products listed on the platform:
+- `seller_id`
+- `brand`, `name`, `category`, `condition`
+- `original_price`, `selling_price`
+- `images` (array of public URLs stored on Supabase bucket `product-images`)
+- `area` (saved in database as `City, State` text format)
+- `is_sold` (status flag)
+
+---
+
+## Technical Documentation
+For deeper documentation regarding front-end structure, database triggers, and security rules:
+- **[System Architecture](file:///w:/Web%20Dev%20Projects/chennai-beauty-swap/chennai-beauty-swap/docs/ARCHITECTURE.md)**
+- **[Database Schema & Security](file:///w:/Web%20Dev%20Projects/chennai-beauty-swap/chennai-beauty-swap/docs/DATABASE_SCHEMA.md)**
+- **[Functional Features Guide](file:///w:/Web%20Dev%20Projects/chennai-beauty-swap/chennai-beauty-swap/docs/FEATURES_GUIDE.md)**
+- **[Maintenance Checklist](file:///w:/Web%20Dev%20Projects/chennai-beauty-swap/chennai-beauty-swap/docs/MAINTENANCE.md)**

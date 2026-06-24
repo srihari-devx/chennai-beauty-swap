@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, ChevronDown, Mail, Newspaper, Calendar, Tag } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
+import { cleanImageUrl } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
@@ -89,12 +90,11 @@ const ArticleImage = ({ src, alt, className }: { src: string; alt: string; class
 
   return (
     <img
-      src={src}
+      src={cleanImageUrl(src)}
       alt={alt}
       className={className}
       loading="lazy"
       decoding="async"
-      referrerPolicy="no-referrer"
       onError={() => setError(true)}
     />
   );

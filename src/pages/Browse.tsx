@@ -7,7 +7,7 @@ import PriceRangeFilter from "@/components/PriceRangeFilter";
 import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS } from "@/lib/constants";
+import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS, INDIAN_STATES } from "@/lib/constants";
 
 const Browse = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -188,13 +188,19 @@ const Browse = () => {
 
       {/* Area */}
       <div>
-        <p className="text-sm font-semibold text-foreground mb-3">Location</p>
-        <Input
-          placeholder="e.g. Andheri, Koramangala, T Nagar"
+        <p className="text-sm font-semibold text-foreground mb-3">Location (State)</p>
+        <select
           value={area}
           onChange={(e) => setArea(e.target.value)}
-          className="rounded-xl border-border bg-background"
-        />
+          className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="">All States</option>
+          {INDIAN_STATES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Price Range */}
