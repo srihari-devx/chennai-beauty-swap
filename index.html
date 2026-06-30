@@ -1,15 +1,6 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3ZGJHTYJLJ"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-3ZGJHTYJLJ');
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Swaptics</title>
@@ -18,6 +9,17 @@
     content="Rescue Beauty Products. Save Money. Reduce Waste.
 India's hyperlocal marketplace to buy, sell, and swap unused cosmetics. Connect with beauty lovers in your area — no payments, no delivery hassle." />
     <meta name="author" content="Srihari" />
+
+    <!-- Inline critical CSS — instant background and font-family for above-the-fold -->
+    <style>
+      html { background: hsl(308 30% 98%); }
+      body { margin: 0; font-family: 'DM Sans', sans-serif; background: hsl(308 30% 98%); color: hsl(308 15% 20%); -webkit-font-smoothing: antialiased; }
+      h1, h2, h3 { font-family: 'Playfair Display', serif; }
+      .dark body, .dark html { background: hsl(308 15% 8%); color: hsl(308 25% 92%); }
+    </style>
+
+    <!-- Preload the optimized logo for fast LCP -->
+    <link rel="preload" as="image" type="image/webp" href="/logo.webp" />
 
     <!-- Font preconnect for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -35,5 +37,21 @@ India's hyperlocal marketplace to buy, sell, and swap unused cosmetics. Connect 
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Google Analytics — deferred to after page load for better FCP/LCP -->
+    <script>
+      window.addEventListener('load', function() {
+        var s = document.createElement('script');
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-3ZGJHTYJLJ';
+        s.async = true;
+        document.head.appendChild(s);
+        s.onload = function() {
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-3ZGJHTYJLJ');
+        };
+      });
+    </script>
   </body>
 </html>

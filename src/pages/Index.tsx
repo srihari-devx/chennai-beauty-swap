@@ -60,18 +60,22 @@ const CarouselDots = ({ api }: { api: CarouselApi | undefined }) => {
   if (scrollSnaps.length <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center gap-1.5 mt-5">
+    <div className="flex items-center justify-center gap-0 mt-5">
       {scrollSnaps.map((_, idx) => (
         <button
           key={idx}
           onClick={() => api?.scrollTo(idx)}
           aria-label={`Go to slide ${idx + 1}`}
-          className={`rounded-full transition-all duration-300 ${
-            idx === selectedIndex
-              ? "w-6 h-2 bg-primary"
-              : "w-2 h-2 bg-primary/25 hover:bg-primary/40"
-          }`}
-        />
+          className="relative flex items-center justify-center w-12 h-12 cursor-pointer"
+        >
+          <span
+            className={`rounded-full transition-all duration-300 block ${
+              idx === selectedIndex
+                ? "w-6 h-2 bg-primary"
+                : "w-2 h-2 bg-primary/25 hover:bg-primary/40"
+            }`}
+          />
+        </button>
       ))}
     </div>
   );
@@ -92,6 +96,8 @@ const ArticleImage = ({ src, alt, className }: { src: string; alt: string; class
     <img
       src={cleanImageUrl(src)}
       alt={alt}
+      width={400}
+      height={160}
       className={className}
       loading="lazy"
       decoding="async"

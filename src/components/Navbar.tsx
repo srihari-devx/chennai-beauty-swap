@@ -24,7 +24,10 @@ const Navbar = () => {
       <div className="container mx-auto px-4 h-24 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center group shrink-0">
-          <img src="/Swaptics transparent BG.png" alt="Swaptics" width="144" height="144" fetchPriority="high" className="h-28 md:h-36 w-auto object-contain -my-4" />
+          <picture>
+            <source srcSet="/logo.webp" type="image/webp" />
+            <img src="/logo-fallback.png" alt="Swaptics" width="300" height="300" fetchPriority="high" decoding="async" className="h-28 md:h-36 w-auto object-contain -my-4" />
+          </picture>
         </Link>
 
         {/* Desktop Nav */}

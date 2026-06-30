@@ -26,7 +26,7 @@
 
     /* Light primary-hue muted */
     --muted: 308 25% 95%;
-    --muted-foreground: 308 10% 40%;
+    --muted-foreground: 308 10% 35%;
 
     /* Soft lavender accent */
     --accent: 270 40% 92%;
@@ -106,7 +106,7 @@
     --secondary: 270 35% 90%;
     --secondary-foreground: 270 25% 35%;
     --muted: 308 25% 95%;
-    --muted-foreground: 308 10% 40%;
+    --muted-foreground: 308 10% 35%;
     --accent: 270 40% 92%;
     --accent-foreground: 270 30% 30%;
     --destructive: 0 72% 58%;
