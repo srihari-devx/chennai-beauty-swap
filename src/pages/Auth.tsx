@@ -66,6 +66,7 @@ const Auth = () => {
       return;
     }
 
+    // Use the ID token callback flow
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: async (response: { credential: string }) => {
@@ -88,16 +89,24 @@ const Auth = () => {
       },
       auto_select: false,
       context: "signin",
+      ux_mode: "popup",
     });
 
-    // Trigger the Google account chooser popup
-    window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
+    // Trigger the Google account chooser
+    window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean; getNotDisplayedReason?: () => string }) => {
       if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // Fallback: If One Tap is blocked (e.g. user dismissed it before),
-        // use the explicit popup flow via google.accounts.oauth2
-        // Reset loading since prompt was suppressed
+        // One Tap was blocked — fall back to Supabase OAuth redirect as last resort
+        // This can happen due to browser settings, cooldown, or missing origin config
+        console.warn("Google One Tap blocked:", notification.getNotDisplayedReason?.());
         setLoading(false);
-        toast.info("Please allow the Google popup or try again.");
+
+        // Fallback: use Supabase OAuth redirect (shows supabase.co domain but at least works)
+        supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin },
+        }).then(({ error }) => {
+          if (error) toast.error(error.message);
+        });
       }
     });
   };
