@@ -52,24 +52,45 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
 
-    // Check if Google Identity Services is loaded
-    if (!window.google?.accounts?.id) {
-      toast.error("Google Sign-In is still loading. Please try again in a moment.");
-      setLoading(false);
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    // If Google Identity Services isn't available or no client ID, go straight to Supabase OAuth
+    if (!window.google?.accounts?.id || !clientId) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) {
+        toast.error(error.message);
+        setLoading(false);
+      }
       return;
     }
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    if (!clientId) {
-      toast.error("Google Client ID is not configured.");
-      setLoading(false);
-      return;
-    }
+    // Track whether any callback has fired
+    let callbackFired = false;
+
+    // Safety timeout — if Google doesn't respond in 5s, fall back to Supabase OAuth
+    const fallbackTimeout = setTimeout(() => {
+      if (!callbackFired) {
+        callbackFired = true;
+        console.warn("Google Sign-In timed out, falling back to Supabase OAuth");
+        setLoading(false);
+        supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: window.location.origin },
+        }).then(({ error }) => {
+          if (error) toast.error(error.message);
+        });
+      }
+    }, 5000);
 
     // Use the ID token callback flow
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: async (response: { credential: string }) => {
+        callbackFired = true;
+        clearTimeout(fallbackTimeout);
         try {
           const { error } = await supabase.auth.signInWithIdToken({
             provider: "google",
@@ -95,18 +116,20 @@ const Auth = () => {
     // Trigger the Google account chooser
     window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean; getNotDisplayedReason?: () => string }) => {
       if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // One Tap was blocked — fall back to Supabase OAuth redirect as last resort
-        // This can happen due to browser settings, cooldown, or missing origin config
-        console.warn("Google One Tap blocked:", notification.getNotDisplayedReason?.());
-        setLoading(false);
+        if (!callbackFired) {
+          callbackFired = true;
+          clearTimeout(fallbackTimeout);
+          console.warn("Google One Tap blocked:", notification.getNotDisplayedReason?.());
+          setLoading(false);
 
-        // Fallback: use Supabase OAuth redirect (shows supabase.co domain but at least works)
-        supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: window.location.origin },
-        }).then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
+          // Fallback: use Supabase OAuth redirect
+          supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: window.location.origin },
+          }).then(({ error }) => {
+            if (error) toast.error(error.message);
+          });
+        }
       }
     });
   };
