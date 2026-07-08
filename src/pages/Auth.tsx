@@ -51,16 +51,55 @@ const Auth = () => {
   /* ───────── GOOGLE SIGN IN ───────── */
   const handleGoogleSignIn = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-    if (error) {
-      toast.error(error.message);
+
+    // Check if Google Identity Services is loaded
+    if (!window.google?.accounts?.id) {
+      toast.error("Google Sign-In is still loading. Please try again in a moment.");
       setLoading(false);
+      return;
     }
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      toast.error("Google Client ID is not configured.");
+      setLoading(false);
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async (response: { credential: string }) => {
+        try {
+          const { error } = await supabase.auth.signInWithIdToken({
+            provider: "google",
+            token: response.credential,
+          });
+          if (error) {
+            toast.error(error.message);
+          } else {
+            toast.success("Signed in with Google!");
+            navigate("/");
+          }
+        } catch {
+          toast.error("Something went wrong. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+      },
+      auto_select: false,
+      context: "signin",
+    });
+
+    // Trigger the Google account chooser popup
+    window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        // Fallback: If One Tap is blocked (e.g. user dismissed it before),
+        // use the explicit popup flow via google.accounts.oauth2
+        // Reset loading since prompt was suppressed
+        setLoading(false);
+        toast.info("Please allow the Google popup or try again.");
+      }
+    });
   };
 
   /* ───────── SIGN IN ───────── */
