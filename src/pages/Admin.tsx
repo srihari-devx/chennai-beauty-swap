@@ -56,7 +56,7 @@ interface HourData { hour: string; count: number }
 interface LeaderEntry { name: string; sales: number; userId: string }
 
 const Admin = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ users: 0, listings: 0, sold: 0 });
   const [areaData, setAreaData] = useState<any[]>([]);
@@ -429,7 +429,7 @@ const Admin = () => {
         resetArticleForm();
       }
     } else {
-      const { data, error } = await (supabase as any).from("articles").insert({ ...payload, author_id: (await supabase.auth.getUser()).data.user?.id }).select().single();
+      const { data, error } = await (supabase as any).from("articles").insert({ ...payload, author_id: user?.id }).select().single();
       if (error) { toast.error("Failed to create article: " + error.message); }
       else {
         toast.success("Article created!");

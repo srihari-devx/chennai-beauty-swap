@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { signInWithGoogle, signInWithEmail, signUpWithEmail } from "@/integrations/firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,93 +49,28 @@ const Auth = () => {
     setLoading(false);
   };
 
-  /* ───────── GOOGLE SIGN IN ───────── */
+  /* ───────── GOOGLE SIGN IN (Firebase) ───────── */
   const handleGoogleSignIn = async () => {
     setLoading(true);
-
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-    // If Google Identity Services isn't available or no client ID, go straight to Supabase OAuth
-    if (!window.google?.accounts?.id || !clientId) {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin },
-      });
-      if (error) {
-        toast.error(error.message);
-        setLoading(false);
+    try {
+      await signInWithGoogle();
+      toast.success("Signed in with Google!");
+      navigate("/");
+    } catch (error: any) {
+      // User closed popup or other error
+      if (error?.code === "auth/popup-closed-by-user") {
+        // Silently ignore — user intentionally closed
+      } else if (error?.code === "auth/cancelled-popup-request") {
+        // Duplicate popup — ignore
+      } else {
+        toast.error(error?.message || "Something went wrong. Please try again.");
       }
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // Track whether any callback has fired
-    let callbackFired = false;
-
-    // Safety timeout — if Google doesn't respond in 5s, fall back to Supabase OAuth
-    const fallbackTimeout = setTimeout(() => {
-      if (!callbackFired) {
-        callbackFired = true;
-        console.warn("Google Sign-In timed out, falling back to Supabase OAuth");
-        setLoading(false);
-        supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: { redirectTo: window.location.origin },
-        }).then(({ error }) => {
-          if (error) toast.error(error.message);
-        });
-      }
-    }, 5000);
-
-    // Use the ID token callback flow
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response: { credential: string }) => {
-        callbackFired = true;
-        clearTimeout(fallbackTimeout);
-        try {
-          const { error } = await supabase.auth.signInWithIdToken({
-            provider: "google",
-            token: response.credential,
-          });
-          if (error) {
-            toast.error(error.message);
-          } else {
-            toast.success("Signed in with Google!");
-            navigate("/");
-          }
-        } catch {
-          toast.error("Something went wrong. Please try again.");
-        } finally {
-          setLoading(false);
-        }
-      },
-      auto_select: false,
-      context: "signin",
-      ux_mode: "popup",
-    });
-
-    // Trigger the Google account chooser
-    window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean; getNotDisplayedReason?: () => string }) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        if (!callbackFired) {
-          callbackFired = true;
-          clearTimeout(fallbackTimeout);
-          console.warn("Google One Tap blocked:", notification.getNotDisplayedReason?.());
-          setLoading(false);
-
-          // Fallback: use Supabase OAuth redirect
-          supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: window.location.origin },
-          }).then(({ error }) => {
-            if (error) toast.error(error.message);
-          });
-        }
-      }
-    });
   };
 
-  /* ───────── SIGN IN ───────── */
+  /* ───────── SIGN IN (Firebase) ───────── */
   const handleSignIn = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -142,28 +78,24 @@ const Auth = () => {
     if (!password) { toast.error("Please enter your password."); return; }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
-    setLoading(false);
-
-    if (error) {
-      if (error.message.toLowerCase().includes("email not confirmed")) {
-        toast.error("Your email is not verified yet. Please check your inbox and click the confirmation link first.");
-      } else if (error.message.toLowerCase().includes("invalid login credentials")) {
+    try {
+      await signInWithEmail(normalizedEmail, password);
+      toast.success("Signed in successfully!");
+      navigate("/");
+    } catch (error: any) {
+      if (error?.code === "auth/user-not-found" || error?.code === "auth/wrong-password" || error?.code === "auth/invalid-credential") {
         toast.error("Invalid email or password. Please try again.");
+      } else if (error?.code === "auth/too-many-requests") {
+        toast.error("Too many failed attempts. Please try again later.");
       } else {
-        toast.error(error.message);
+        toast.error(error?.message || "Sign in failed.");
       }
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    toast.success("Signed in successfully!");
-    navigate("/");
   };
 
-  /* ───────── SIGN UP ───────── */
+  /* ───────── SIGN UP (Firebase + Supabase profile) ───────── */
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -179,37 +111,38 @@ const Auth = () => {
     }
 
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        data: {
-          full_name: fullName.trim(),
-          area: `${area}${state ? ', ' + state : ''}`,
-          gender,
-        },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    setLoading(false);
+    try {
+      // 1. Create Firebase auth account
+      const credential = await signUpWithEmail(normalizedEmail, password, fullName.trim());
+      const firebaseUid = credential.user.uid;
 
-    if (error) {
-      if (error.message.toLowerCase().includes("already registered")) {
-        toast.error("This email is already registered. Please sign in instead.");
-      } else {
-        toast.error(error.message);
+      // 2. Create Supabase profile using Firebase UID
+      const { error: profileError } = await supabase.from("profiles").insert({
+        user_id: firebaseUid,
+        full_name: fullName.trim(),
+        area: `${area}${state ? ', ' + state : ''}`,
+        gender,
+        is_verified: false,
+      });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        // Profile may already exist from the AuthContext bridge
       }
-      return;
-    }
 
-    // Supabase returns a user with no identities if the email is already registered
-    if (data?.user && data.user.identities && data.user.identities.length === 0) {
-      toast.error("This email is already registered. Please sign in instead.");
-      return;
+      toast.success("Account created successfully!");
+      navigate("/");
+    } catch (error: any) {
+      if (error?.code === "auth/email-already-in-use") {
+        toast.error("This email is already registered. Please sign in instead.");
+      } else if (error?.code === "auth/weak-password") {
+        toast.error("Password is too weak. Please choose a stronger password.");
+      } else {
+        toast.error(error?.message || "Sign up failed.");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    setSignupDone(true);
-    toast.success("Account created! Please check your email to verify your account.");
   };
 
   /* ───────── UI ───────── */
