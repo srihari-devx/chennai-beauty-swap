@@ -26,8 +26,8 @@ function getCorsHeaders(req: Request) {
 }
 
 // ─── Firebase ID Token Verification ─────────────────────────────────────────
-// We verify Firebase ID tokens using Google's public keys (no Admin SDK needed).
-// Ref: https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
+// Verifies a Firebase ID token using Google's JWK public keys.
+// Ref: https://firebase.google.com/docs/auth/admin/verify-id-tokens
 
 interface FirebaseClaims {
   uid: string;
@@ -36,14 +36,41 @@ interface FirebaseClaims {
   picture: string | null;
 }
 
+/**
+ * Decode a base64url string into a UTF-8 string (handles URL-safe base64).
+ */
+function decodeBase64Url(str: string): string {
+  // Replace URL-safe chars and add padding
+  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  return atob(padded);
+}
+
+/**
+ * Decode a base64url string into a Uint8Array.
+ */
+function decodeBase64UrlBytes(str: string): Uint8Array {
+  return Uint8Array.from(decodeBase64Url(str), (c) => c.charCodeAt(0));
+}
+
 async function verifyFirebaseIdToken(idToken: string): Promise<FirebaseClaims | null> {
   try {
-    // Decode the JWT header to get the key ID
     const parts = idToken.split(".");
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.error("Invalid JWT format");
+      return null;
+    }
 
-    const header = JSON.parse(atob(parts[0]));
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    // Decode header and payload
+    let header: any;
+    let payload: any;
+    try {
+      header = JSON.parse(decodeBase64Url(parts[0]));
+      payload = JSON.parse(decodeBase64Url(parts[1]));
+    } catch {
+      console.error("Failed to decode JWT header/payload");
+      return null;
+    }
 
     // Check expiry
     if (payload.exp < Math.floor(Date.now() / 1000)) {
@@ -51,39 +78,36 @@ async function verifyFirebaseIdToken(idToken: string): Promise<FirebaseClaims | 
       return null;
     }
 
-    // Fetch Google's public keys
+    // ── Use JWK endpoint (not x509) — this is the correct format for Web Crypto ──
+    // Google provides Firebase public keys as JWK at this URL:
     const keysRes = await fetch(
-      "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+      "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
     );
-    const keys: Record<string, string> = await keysRes.json();
-
-    const cert = keys[header.kid];
-    if (!cert) {
-      console.error("No matching public key for kid:", header.kid);
+    if (!keysRes.ok) {
+      console.error("Failed to fetch Google JWK keys:", keysRes.status);
       return null;
     }
 
-    // Import the certificate as a CryptoKey
-    const pemBody = cert
-      .replace(/-----BEGIN CERTIFICATE-----/, "")
-      .replace(/-----END CERTIFICATE-----/, "")
-      .replace(/\s/g, "");
-    const certDer = Uint8Array.from(atob(pemBody), (c) => c.charCodeAt(0));
+    const { keys }: { keys: JsonWebKey[] } = await keysRes.json();
+    const jwk = (keys as any[]).find((k) => k.kid === header.kid);
 
+    if (!jwk) {
+      console.error("No matching JWK for kid:", header.kid, "available kids:", keys.map((k: any) => k.kid));
+      return null;
+    }
+
+    // Import the JWK directly — this is what x509 certs were blocking before
     const publicKey = await crypto.subtle.importKey(
-      "spki",
-      certDer,
+      "jwk",
+      jwk,
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
       false,
       ["verify"]
     );
 
-    // Reconstruct the signed content and signature
+    // Reconstruct signed content and signature
     const signedContent = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-    const signature = Uint8Array.from(
-      atob(parts[2].replace(/-/g, "+").replace(/_/g, "/")),
-      (c) => c.charCodeAt(0)
-    );
+    const signature = decodeBase64UrlBytes(parts[2]);
 
     const valid = await crypto.subtle.verify(
       "RSASSA-PKCS1-v1_5",
@@ -104,7 +128,7 @@ async function verifyFirebaseIdToken(idToken: string): Promise<FirebaseClaims | 
       picture: payload.picture || null,
     };
   } catch (err) {
-    console.error("Error verifying Firebase token:", err);
+    console.error("Unexpected error verifying Firebase token:", err);
     return null;
   }
 }
@@ -113,7 +137,6 @@ async function verifyFirebaseIdToken(idToken: string): Promise<FirebaseClaims | 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -125,7 +148,6 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Parse body
   let body: { idToken?: string };
   try {
     body = await req.json();
@@ -144,13 +166,16 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Verify the Firebase ID token
+  // Verify the Firebase ID token using JWK keys
   const claims = await verifyFirebaseIdToken(idToken);
   if (!claims) {
-    return new Response(JSON.stringify({ error: "Invalid or expired Firebase ID token" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Invalid or expired Firebase ID token" }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 
   // Use service role to bypass RLS
@@ -158,7 +183,7 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  // ── Try to find existing profile by firebase_uid ──────────────────────────
+  // Try to find existing profile by firebase_uid
   const { data: existingProfile, error: selectError } = await supabase
     .from("profiles")
     .select("*")
@@ -167,24 +192,26 @@ Deno.serve(async (req) => {
 
   if (selectError) {
     console.error("Error fetching profile:", selectError);
-    return new Response(JSON.stringify({ error: "Database error fetching profile" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Database error fetching profile" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 
   if (existingProfile) {
-    // ── Return existing profile ──────────────────────────────────────────────
     return new Response(JSON.stringify(existingProfile), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // ── Create a new profile for this Firebase user ───────────────────────────
-  // user_id must be a UUID. Since the FK constraint is dropped, we generate
-  // a new UUID as a stable identifier for this Firebase user within our system.
+  // Create a new profile for this Firebase user.
+  // user_id is a stable UUID generated for this Firebase user (FK constraint was dropped).
   const stableUserId = crypto.randomUUID();
-  const displayName = claims.name || (claims.email ? claims.email.split("@")[0] : "User");
+  const displayName =
+    claims.name || (claims.email ? claims.email.split("@")[0] : "User");
 
   const { data: newProfile, error: insertError } = await supabase
     .from("profiles")
@@ -201,10 +228,13 @@ Deno.serve(async (req) => {
 
   if (insertError) {
     console.error("Error creating profile:", insertError);
-    return new Response(JSON.stringify({ error: "Failed to create profile: " + insertError.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Failed to create profile: " + insertError.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 
   return new Response(JSON.stringify(newProfile), {
