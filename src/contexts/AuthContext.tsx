@@ -1,12 +1,16 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { firebaseAuth } from "@/integrations/firebase/config";
 import { firebaseSignOut } from "@/integrations/firebase/auth";
 import { supabase } from "@/integrations/supabase/client";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
 interface Profile {
   id: string;
   user_id: string;
+  firebase_uid: string | null;
   full_name: string;
   area: string;
   avatar_url: string | null;
@@ -55,71 +59,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  /**
-   * Bridge: given a Firebase user's email, look up the matching Supabase profile.
-   * If the profile doesn't exist yet (first Google sign-in), create one.
-   */
-  const resolveSupabaseProfile = async (fbUser: FirebaseUser) => {
-    const email = fbUser.email;
-    if (!email) return;
-
-    try {
-      // Try to find existing profile by email in the auth.users / profiles table
-      // Profiles store user_id (Supabase auth UUID). We look up by matching email.
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", fbUser.uid)
-        .maybeSingle();
-
-      if (profileData) {
-        // Existing profile found by Firebase UID
-        setProfile(profileData);
-        setUser({ id: profileData.user_id, email });
-        await checkAdmin(profileData.user_id);
-        return;
-      }
-
-      // Try finding by the original Supabase user_id if email matches
-      // We search for a profile whose user_id matches via the auth table
-      // Since we can't query auth.users from client, look up profiles directly
-      // by checking all profiles (for the bridge approach, we use email matching
-      // through the user_id in auth.users). However, profiles don't store email.
-      // 
-      // Alternative: Insert new profile with Firebase UID as user_id.
-      // This works for NEW users. For existing users who had Supabase auth,
-      // we'll need to update their user_id to match Firebase UID.
-
-      // Create a new profile for this Firebase user
-      const displayName = fbUser.displayName || email.split("@")[0];
-      const { data: newProfile, error } = await supabase
-        .from("profiles")
-        .insert({
-          user_id: fbUser.uid,
-          full_name: displayName,
-          area: "",
-          is_verified: false,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating profile:", error);
-        // Profile might already exist with a different user_id
-        // This can happen if the same email was used with Supabase auth before
-        return;
-      }
-
-      if (newProfile) {
-        setProfile(newProfile);
-        setUser({ id: newProfile.user_id, email });
-        await checkAdmin(newProfile.user_id);
-      }
-    } catch (err) {
-      console.error("Error resolving profile:", err);
-    }
-  };
-
   const checkAdmin = async (userId: string) => {
     try {
       const { data: roleData } = await supabase
@@ -134,13 +73,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const fetchProfileFromUser = async () => {
-    if (!firebaseUser) return;
-    await resolveSupabaseProfile(firebaseUser);
-  };
+  /**
+   * Bridge: given a Firebase user, fetch or create a Supabase profile via
+   * the firebase-profile Edge Function (uses service role to bypass RLS,
+   * and verifies the Firebase ID token server-side).
+   */
+  const resolveSupabaseProfile = useCallback(async (fbUser: FirebaseUser) => {
+    try {
+      // Get the Firebase ID token (refreshes automatically if expired)
+      const idToken = await fbUser.getIdToken();
 
-  const refreshProfile = fetchProfileFromUser;
-  const fetchProfile = fetchProfileFromUser;
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/firebase-profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // The anon key is sent as the API key so the Edge Function is reachable.
+          // The actual auth check is done inside the function using the ID token.
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.error("firebase-profile edge function error:", errBody);
+        return;
+      }
+
+      const profileData: Profile = await res.json();
+
+      if (profileData?.user_id) {
+        setProfile(profileData);
+        setUser({ id: profileData.user_id, email: fbUser.email });
+        await checkAdmin(profileData.user_id);
+      }
+    } catch (err) {
+      console.error("Error resolving Supabase profile:", err);
+    }
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    // Re-read firebaseUser from the auth instance directly to avoid stale closure
+    const currentUser = firebaseAuth.currentUser;
+    if (currentUser) {
+      await resolveSupabaseProfile(currentUser);
+    }
+  }, [resolveSupabaseProfile]);
+
+  const fetchProfile = refreshProfile;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (fbUser) => {
@@ -158,7 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [resolveSupabaseProfile]);
 
   const signOut = async () => {
     await firebaseSignOut();
