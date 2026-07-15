@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .select("role")
         .eq("user_id", userId)
         .eq("role", "admin")
-        .single();
+        .maybeSingle();  // .single() throws 406 when no row found; maybeSingle() returns null
       setIsAdmin(!!roleData);
     } catch {
       setIsAdmin(false);
