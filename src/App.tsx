@@ -40,7 +40,7 @@ const App = () => (
       <ThemeProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AuthProvider>
             <div className="min-h-screen bg-background flex flex-col">
               <Navbar />

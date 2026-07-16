@@ -10,11 +10,14 @@
 --   4. Allow service-role inserts (Edge Function bypasses RLS via service key)
 -- =========================================================================
 
--- ── Step 1: Drop the foreign key constraint that blocks Firebase UIDs ─────
--- profiles.user_id previously referenced auth.users(id), which only works
--- for Supabase-native auth users. Firebase UIDs are not in auth.users.
+-- ── Step 0: Drop FK constraints that block Firebase UUIDs ────────────────
+-- Both profiles AND user_roles reference auth.users(id). Firebase-generated
+-- UUIDs don't exist in auth.users, so both FKs must be dropped.
 ALTER TABLE public.profiles
   DROP CONSTRAINT IF EXISTS profiles_user_id_fkey;
+
+ALTER TABLE public.user_roles
+  DROP CONSTRAINT IF EXISTS user_roles_user_id_fkey;
 
 -- ── Step 2: Add firebase_uid column ───────────────────────────────────────
 -- Stores the Firebase UID (e.g. "V8XjD03hEcMJrbD3jCdlurQytMY2").

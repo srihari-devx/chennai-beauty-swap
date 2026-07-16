@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { firebaseAuth } from "@/integrations/firebase/config";
 import { useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip,
@@ -56,7 +57,7 @@ interface HourData { hour: string; count: number }
 interface LeaderEntry { name: string; sales: number; userId: string }
 
 const Admin = () => {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({ users: 0, listings: 0, sold: 0 });
   const [areaData, setAreaData] = useState<any[]>([]);
@@ -313,7 +314,6 @@ const Admin = () => {
 
   const addAdmin = async () => {
     if (!newAdminEmail.trim()) return;
-    // L-4 fix: Validate email format before sending to server
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newAdminEmail.trim())) {
       toast.error("Please enter a valid email address.");
@@ -321,17 +321,59 @@ const Admin = () => {
     }
     setAddingAdmin(true);
     try {
+      // Check if there are any existing admins
+      const { count: currentAdminCount } = await supabase
+        .from("user_roles")
+        .select("*", { count: "exact", head: true })
+        .eq("role", "admin");
+      // Bootstrap mode: no admins exist — use SECURITY DEFINER RPC to bypass RLS
+      if ((currentAdminCount ?? 0) === 0) {
+        if (!user?.id) {
+          toast.error("You must be signed in.");
+          setAddingAdmin(false);
+          return;
+        }
+        // @ts-ignore — bootstrap_admin is a custom RPC not in generated types
+        const { data: rpcData, error: rpcError } = await supabase.rpc("bootstrap_admin", {
+          target_user_id: user.id,
+        });
+
+        if (rpcError) {
+          toast.error("Failed to grant admin: " + rpcError.message);
+          setAddingAdmin(false);
+          return;
+        }
+        const rpcResult = rpcData as { error?: string } | null;
+        if (rpcResult?.error) {
+          toast.error(rpcResult.error);
+          setAddingAdmin(false);
+          return;
+        }
+
+        toast.success("Admin privileges granted! Refreshing your session...");
+        setNewAdminEmail("");
+        await refreshProfile();
+        fetchData();
+        setAddingAdmin(false);
+        return;
+      }
+
+      // Normal mode: use Edge Function to add admin by email
+      const currentFirebaseUser = firebaseAuth.currentUser;
+      if (!currentFirebaseUser) {
+        toast.error("You must be signed in to perform this action.");
+        setAddingAdmin(false);
+        return;
+      }
+      const idToken = await currentFirebaseUser.getIdToken();
+
       const res = await supabase.functions.invoke("setup-admin", {
-        body: { email: newAdminEmail.trim() },
+        body: { email: newAdminEmail.trim(), idToken },
       });
 
-      // supabase.functions.invoke treats non-2xx as error.
-      // The actual error message may be in res.data (parsed body) or res.error.context
       if (res.error) {
-        // Try to get the server's error message from the response body
         let serverMsg = "";
         try {
-          // For FunctionsHttpError, the response body may already be parsed in res.data
           if (res.data?.error) {
             serverMsg = res.data.error;
           } else if (res.error.message) {
@@ -346,6 +388,7 @@ const Admin = () => {
       } else {
         toast.success(`Admin role granted to ${newAdminEmail}`);
         setNewAdminEmail("");
+        await refreshProfile();
         fetchData();
       }
     } catch (err: any) {

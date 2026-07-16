@@ -204,7 +204,15 @@ Deno.serve(async (req) => {
   }
 
   if (existingProfile) {
-    return new Response(JSON.stringify(existingProfile), {
+    // Check admin role using service role (bypasses RLS)
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", existingProfile.user_id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    return new Response(JSON.stringify({ ...existingProfile, is_admin: !!roleData }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -239,7 +247,13 @@ Deno.serve(async (req) => {
     );
   }
 
-  return new Response(JSON.stringify(newProfile), {
+  // New profile: also insert a 'user' role record
+  await supabase
+    .from("user_roles")
+    .insert({ user_id: stableUserId, role: "user" })
+    .throwOnError();
+
+  return new Response(JSON.stringify({ ...newProfile, is_admin: false }), {
     status: 201,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });

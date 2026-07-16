@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { firebaseAuth } from "@/integrations/firebase/config";
 import { firebaseSignOut } from "@/integrations/firebase/auth";
-import { supabase } from "@/integrations/supabase/client";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -59,20 +58,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const checkAdmin = async (userId: string) => {
-    try {
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();  // .single() throws 406 when no row found; maybeSingle() returns null
-      setIsAdmin(!!roleData);
-    } catch {
-      setIsAdmin(false);
-    }
-  };
-
   /**
    * Bridge: given a Firebase user, fetch or create a Supabase profile via
    * the firebase-profile Edge Function (uses service role to bypass RLS,
@@ -101,12 +86,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const profileData: Profile = await res.json();
+      const profileData: Profile & { is_admin?: boolean } = await res.json();
 
       if (profileData?.user_id) {
         setProfile(profileData);
         setUser({ id: profileData.user_id, email: fbUser.email });
-        await checkAdmin(profileData.user_id);
+        // is_admin is returned directly by the edge function (service role bypasses RLS)
+        setIsAdmin(!!profileData.is_admin);
       }
     } catch (err) {
       console.error("Error resolving Supabase profile:", err);

@@ -26,7 +26,7 @@ const Navbar = () => {
         <Link to="/" className="flex items-center group shrink-0">
           <picture>
             <source srcSet="/logo.webp" type="image/webp" />
-            <img src="/logo-fallback.png" alt="Swaptics" width="300" height="300" fetchPriority="high" decoding="async" className="h-28 md:h-36 w-auto object-contain -my-4" />
+            <img src="/logo-fallback.png" alt="Swaptics" width="300" height="300" decoding="async" className="h-28 md:h-36 w-auto object-contain -my-4" />
           </picture>
         </Link>
 
@@ -34,17 +34,15 @@ const Navbar = () => {
         <nav className="hidden md:flex items-center gap-1">
           <Link
             to="/browse"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive("/browse") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive("/browse") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
           >
             Browse
           </Link>
           <Link
             to="/articles"
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive("/articles") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive("/articles") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
           >
             Articles
           </Link>
@@ -52,34 +50,30 @@ const Navbar = () => {
             <>
               <Link
                 to="/sell"
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive("/sell") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive("/sell") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
               >
                 Sell
               </Link>
               <Link
                 to="/chats"
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive("/chats") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive("/chats") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
               >
                 Chats
               </Link>
               <Link
                 to="/dashboard"
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive("/dashboard") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive("/dashboard") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
               >
                 Dashboard
               </Link>
               {isAdmin && (
                 <Link
                   to="/cbs-admin"
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/cbs-admin") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive("/cbs-admin") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
                 >
                   Admin
                 </Link>
