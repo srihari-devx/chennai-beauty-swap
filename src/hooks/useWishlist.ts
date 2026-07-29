@@ -22,11 +22,16 @@ export const useWishlist = () => {
     if (!user) return false;
     setLoading(true);
     try {
-      if (wishlistIds.has(productId)) {
-        await supabase.from("wishlists").delete().eq("user_id", user.id).eq("product_id", productId);
+      // @ts-ignore — custom RPC not in generated types
+      const { data: res, error } = await supabase.rpc("fn_toggle_wishlist", {
+        p_user_id: user.id,
+        p_product_id: productId,
+      });
+      const result = res as { error?: string; action?: string } | null;
+      if (error || result?.error) return false;
+      if (result?.action === "removed") {
         setWishlistIds(prev => { const n = new Set(prev); n.delete(productId); return n; });
       } else {
-        await supabase.from("wishlists").insert({ user_id: user.id, product_id: productId });
         setWishlistIds(prev => new Set(prev).add(productId));
       }
       return true;

@@ -235,58 +235,18 @@ const Admin = () => {
   const _doDeleteUser = async (userId: string) => {
     setManagingUserId(userId);
     try {
-      // Get user's product IDs first (needed for cascading deletes)
-      const { data: userProducts } = await supabase
-        .from("products")
-        .select("id")
-        .eq("seller_id", userId);
-      const productIds = (userProducts || []).map(p => p.id);
-
-      // Delete related data in correct order
-      if (productIds.length > 0) {
-        await supabase.from("product_views").delete().in("product_id", productIds);
-        await supabase.from("product_reports").delete().in("product_id", productIds);
-        await supabase.from("wishlists").delete().in("product_id", productIds);
-        // Delete chats & messages for user's products
-        const { data: chats } = await supabase.from("chats").select("id").in("product_id", productIds);
-        const chatIds = (chats || []).map(c => c.id);
-        if (chatIds.length > 0) {
-          await supabase.from("messages").delete().in("chat_id", chatIds);
-        }
-        await supabase.from("chats").delete().in("product_id", productIds);
-        await supabase.from("products").delete().eq("seller_id", userId);
-      }
-
-      // Delete user's own chats as buyer
-      const { data: buyerChats } = await supabase.from("chats").select("id").eq("buyer_id", userId);
-      const buyerChatIds = (buyerChats || []).map(c => c.id);
-      if (buyerChatIds.length > 0) {
-        await supabase.from("messages").delete().in("chat_id", buyerChatIds);
-        await supabase.from("chats").delete().eq("buyer_id", userId);
-      }
-
-      // Delete remaining user-specific data
-      await supabase.from("wishlists").delete().eq("user_id", userId);
-      await supabase.from("notifications").delete().eq("user_id", userId);
-      await supabase.from("ratings").delete().eq("rater_id", userId);
-      await supabase.from("ratings").delete().eq("seller_id", userId);
-      await supabase.from("seller_badges").delete().eq("user_id", userId);
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-
-      // Finally delete the profile
-      const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
-      if (error) throw error;
-
-      // Delete from auth.users via secure SQL RPC
-      // @ts-ignore
-      const { error: rpcError } = await supabase.rpc("admin_delete_user", {
-        target_user_id: userId,
+      // Use SECURITY DEFINER RPC — works without a Supabase auth session (Firebase bridge)
+      // @ts-ignore — custom RPC not in generated types
+      const { data: res, error } = await supabase.rpc("fn_admin_delete_user", {
+        p_requesting_user_id: user?.id,
+        p_target_user_id: userId,
       });
-      if (rpcError) {
-        console.warn("Auth user deletion warning:", rpcError.message);
+      const result = res as { error?: string } | null;
+      if (error || result?.error) {
+        throw new Error(result?.error || error?.message || "RPC error");
       }
 
-      setUsers(u => u.filter(user => user.user_id !== userId));
+      setUsers(u => u.filter(u2 => u2.user_id !== userId));
       setStats(s => ({ ...s, users: s.users - 1 }));
       toast.success("User and all their data deleted successfully");
     } catch {
@@ -301,8 +261,15 @@ const Admin = () => {
     // L-6 fix: toast confirmation instead of native confirm()
     toast("Delete this product permanently?", {
       action: { label: "Delete", onClick: async () => {
-        const { error } = await supabase.from("products").delete().eq("id", id);
-        if (!error) {
+        // @ts-ignore — custom RPC not in generated types
+        const { data: res, error } = await supabase.rpc("fn_delete_product", {
+          p_user_id: user?.id,
+          p_product_id: id,
+        });
+        const result = res as { error?: string } | null;
+        if (error || result?.error) {
+          toast.error(result?.error || error?.message || "Failed to delete product");
+        } else {
           setProducts(p => p.filter(prod => prod.id !== id));
           toast.success("Product deleted");
         }
@@ -407,8 +374,15 @@ const Admin = () => {
     // L-6 fix: toast confirmation instead of native confirm()
     toast("Remove admin role from this user?", {
       action: { label: "Remove", onClick: async () => {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
-        if (!error) {
+        // @ts-ignore — custom RPC not in generated types
+        const { data: res, error } = await supabase.rpc("fn_admin_revoke_role", {
+          p_requesting_user_id: user?.id,
+          p_target_user_id: userId,
+        });
+        const result = res as { error?: string } | null;
+        if (error || result?.error) {
+          toast.error(result?.error || error?.message || "Failed to remove admin role");
+        } else {
           setAdmins(a => a.filter(admin => admin.user_id !== userId));
           toast.success("Admin role removed");
         }
@@ -464,19 +438,44 @@ const Admin = () => {
     };
 
     if (editingArticleId) {
-      const { error } = await (supabase as any).from("articles").update(payload).eq("id", editingArticleId);
-      if (error) { toast.error("Failed to update article"); }
-      else {
+      // @ts-ignore — custom RPC not in generated types
+      const { data: res, error } = await supabase.rpc("fn_admin_update_article", {
+        p_user_id: user?.id,
+        p_article_id: editingArticleId,
+        p_title: payload.title,
+        p_content: payload.content,
+        p_excerpt: payload.excerpt ?? null,
+        p_category: payload.category,
+        p_cover_image: payload.cover_image_url ?? null,
+        p_is_published: payload.is_published,
+      });
+      const result = res as { error?: string } | null;
+      if (error || result?.error) {
+        toast.error(result?.error || error?.message || "Failed to update article");
+      } else {
         toast.success("Article updated!");
         setArticlesList(prev => prev.map(a => a.id === editingArticleId ? { ...a, ...payload } : a));
         resetArticleForm();
       }
     } else {
-      const { data, error } = await (supabase as any).from("articles").insert({ ...payload, author_id: user?.id }).select().single();
-      if (error) { toast.error("Failed to create article: " + error.message); }
-      else {
+      // @ts-ignore — custom RPC not in generated types
+      const { data: res, error } = await supabase.rpc("fn_admin_insert_article", {
+        p_user_id: user?.id,
+        p_title: payload.title,
+        p_content: payload.content,
+        p_excerpt: payload.excerpt ?? null,
+        p_category: payload.category,
+        p_cover_image: payload.cover_image_url ?? null,
+        p_is_published: payload.is_published,
+      });
+      const result = res as { error?: string; id?: string; created_at?: string; updated_at?: string } | null;
+      if (error || result?.error) {
+        toast.error(result?.error || error?.message || "Failed to create article");
+      } else {
         toast.success("Article created!");
-        setArticlesList(prev => [data as ArticleRow, ...prev]);
+        // Re-fetch to get the full row from DB
+        const { data: newArticle } = await (supabase as any).from("articles").select("*").eq("id", result?.id).single();
+        if (newArticle) setArticlesList(prev => [newArticle as ArticleRow, ...prev]);
         resetArticleForm();
       }
     }
@@ -487,8 +486,15 @@ const Admin = () => {
     // L-6 fix: toast confirmation instead of native confirm()
     toast("Delete this article permanently?", {
       action: { label: "Delete", onClick: async () => {
-        const { error } = await (supabase as any).from("articles").delete().eq("id", id);
-        if (!error) {
+        // @ts-ignore — custom RPC not in generated types
+        const { data: res, error } = await supabase.rpc("fn_admin_delete_article", {
+          p_user_id: user?.id,
+          p_article_id: id,
+        });
+        const result = res as { error?: string } | null;
+        if (error || result?.error) {
+          toast.error(result?.error || error?.message || "Failed to delete article");
+        } else {
           setArticlesList(prev => prev.filter(a => a.id !== id));
           toast.success("Article deleted");
         }
@@ -513,8 +519,16 @@ const Admin = () => {
 
   const togglePublish = async (article: ArticleRow) => {
     const newStatus = !article.is_published;
-    const { error } = await (supabase as any).from("articles").update({ is_published: newStatus, updated_at: new Date().toISOString() }).eq("id", article.id);
-    if (!error) {
+    // @ts-ignore — custom RPC not in generated types
+    const { data: res, error } = await supabase.rpc("fn_admin_toggle_publish", {
+      p_user_id: user?.id,
+      p_article_id: article.id,
+      p_is_published: newStatus,
+    });
+    const result = res as { error?: string } | null;
+    if (error || result?.error) {
+      toast.error(result?.error || error?.message || "Failed to update article");
+    } else {
       setArticlesList(prev => prev.map(a => a.id === article.id ? { ...a, is_published: newStatus } : a));
       toast.success(newStatus ? "Article published!" : "Article unpublished");
     }
@@ -524,8 +538,15 @@ const Admin = () => {
     // L-6 fix: toast confirmation instead of native confirm()
     toast("Remove this subscriber?", {
       action: { label: "Remove", onClick: async () => {
-        const { error } = await (supabase as any).from("newsletter_subscribers").delete().eq("id", id);
-        if (!error) {
+        // @ts-ignore — custom RPC not in generated types
+        const { data: res, error } = await supabase.rpc("fn_admin_remove_subscriber", {
+          p_user_id: user?.id,
+          p_subscriber_id: id,
+        });
+        const result = res as { error?: string } | null;
+        if (error || result?.error) {
+          toast.error(result?.error || error?.message || "Failed to remove subscriber");
+        } else {
           setSubscribers(prev => prev.filter(s => s.id !== id));
           toast.success("Subscriber removed");
         }
@@ -539,8 +560,15 @@ const Admin = () => {
     // L-6 fix: toast confirmation instead of native confirm()
     toast("Delete this feedback entry?", {
       action: { label: "Delete", onClick: async () => {
-        const { error } = await (supabase as any).from("feedback").delete().eq("id", id);
-        if (!error) {
+        // @ts-ignore — custom RPC not in generated types
+        const { data: res, error } = await supabase.rpc("fn_admin_delete_feedback", {
+          p_user_id: user?.id,
+          p_feedback_id: id,
+        });
+        const result = res as { error?: string } | null;
+        if (error || result?.error) {
+          toast.error(result?.error || error?.message || "Failed to delete feedback");
+        } else {
           setFeedbackList(prev => prev.filter(f => f.id !== id));
           toast.success("Feedback deleted");
         }

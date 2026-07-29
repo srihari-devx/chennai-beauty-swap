@@ -58,13 +58,14 @@ const EditProfile = () => {
 
     setLoading(true);
     const fullArea = `${city.trim()}, ${state}`;
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: fullName.trim(),
-        area: fullArea,
-      })
-      .eq("user_id", user.id);
+    // @ts-ignore — custom RPC not in generated types
+    const { data: res, error: rpcError } = await supabase.rpc("fn_update_profile", {
+      p_user_id: user.id,
+      p_full_name: fullName.trim(),
+      p_area: fullArea,
+    });
+    const result = res as { error?: string } | null;
+    const error = rpcError || (result?.error ? { message: result.error } : null);
 
     setLoading(false);
 

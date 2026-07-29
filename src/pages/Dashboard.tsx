@@ -74,20 +74,45 @@ const Dashboard = () => {
   useEffect(() => { fetchData(); }, [user]);
 
   const markAsSold = async (id: string) => {
-    const { error } = await supabase.from("products").update({ is_sold: true }).eq("id", id);
-    if (!error) {
+    // @ts-ignore — custom RPC not in generated types
+    const { data: res, error } = await supabase.rpc("fn_mark_as_sold", {
+      p_user_id: user?.id,
+      p_product_id: id,
+    });
+    const result = res as { error?: string } | null;
+    if (!error && !result?.error) {
       setListings(l => l.map(p => p.id === id ? { ...p, is_sold: true } : p));
       toast.success("Marked as sold!");
+    } else {
+      toast.error(result?.error || error?.message || "Failed to mark as sold");
     }
   };
 
   const deleteListing = async (id: string) => {
-    if (!confirm("Delete this listing? This cannot be undone.")) return;
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (!error) {
-      setListings(l => l.filter(p => p.id !== id));
-      toast.success("Listing deleted");
-    }
+    toast("Delete this listing? This cannot be undone.", {
+      action: {
+        label: "Yes, Delete",
+        onClick: async () => {
+          // @ts-ignore — custom RPC not in generated types
+          const { data: res, error } = await supabase.rpc("fn_delete_own_product", {
+            p_user_id: user?.id,
+            p_product_id: id,
+          });
+          const result = res as { error?: string } | null;
+          if (!error && !result?.error) {
+            setListings(l => l.filter(p => p.id !== id));
+            toast.success("Listing deleted");
+          } else {
+            toast.error(result?.error || error?.message || "Failed to delete listing");
+          }
+        },
+      },
+      cancel: {
+        label: "Cancel",
+        onClick: () => {},
+      },
+      duration: 8000,
+    });
   };
 
   return (

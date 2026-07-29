@@ -100,14 +100,16 @@ export const useNotifications = () => {
   }, [user, fetchNotifications]);
 
   const markAsRead = async (id: string) => {
-    await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+    // @ts-ignore — custom RPC not in generated types
+    await supabase.rpc("fn_mark_notification_read", { p_user_id: user?.id, p_notification_id: id });
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", user.id).eq("is_read", false);
+    // @ts-ignore — custom RPC not in generated types
+    await supabase.rpc("fn_mark_all_notifications_read", { p_user_id: user.id });
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     setUnreadCount(0);
   };

@@ -133,18 +133,26 @@ const ChatWindow = () => {
       });
     }
 
-    supabase.from("messages").insert({ chat_id: chatId, sender_id: user.id, content }).then(() => {});
+    // Insert message via SECURITY DEFINER RPC
+    // @ts-ignore — custom RPC not in generated types
+    supabase.rpc("fn_send_message", {
+      p_user_id: user.id,
+      p_chat_id: chatId,
+      p_content: content,
+    }).then(() => {});
 
-    // Send notification to the other user
+    // Send notification to the other user via RPC
     // M-3 fix: Don't embed message content in notifications — use generic text only
     const recipientId = chat.buyer_id === user.id ? chat.seller_id : chat.buyer_id;
     const senderName = myProfile?.full_name || "Someone";
-    supabase.from("notifications").insert({
-      user_id: recipientId,
-      type: "message",
-      title: `New message from ${senderName}`,
-      message: "You have a new message. Open the chat to read it.",  // generic — no content leak
-      related_id: chatId,
+    // @ts-ignore — custom RPC not in generated types
+    supabase.rpc("fn_send_notification", {
+      p_sender_id: user.id,
+      p_recipient_id: recipientId,
+      p_type: "message",
+      p_title: `New message from ${senderName}`,
+      p_message: "You have a new message. Open the chat to read it.",
+      p_related_id: chatId,
     }).then(() => {}); // fire and forget
 
     setSending(false);

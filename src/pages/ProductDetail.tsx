@@ -47,9 +47,10 @@ const ProductDetail = () => {
       setProduct(prod);
 
       if (prod) {
-        // Track product view
+        // Track product view via RPC (Firebase users have no Supabase auth session)
         if (user) {
-          supabase.from("product_views").insert({ product_id: prod.id, viewer_id: user.id }).then(() => {});
+          // @ts-ignore — custom RPC not in generated types
+          supabase.rpc("fn_track_view", { p_user_id: user.id, p_product_id: prod.id }).then(() => {});
         }
 
         const { data: profile } = await supabase
@@ -97,25 +98,16 @@ const ProductDetail = () => {
     if (!product) return;
     setChatLoading(true);
     try {
-      const { data: existing } = await supabase
-        .from("chats")
-        .select("id")
-        .eq("product_id", product.id)
-        .eq("buyer_id", user.id)
-        .single();
-
-      let chatId = existing?.id;
-
-      if (!chatId) {
-        const { data: newChat, error } = await supabase
-          .from("chats")
-          .insert({ product_id: product.id, buyer_id: user.id, seller_id: product.seller_id })
-          .select("id")
-          .single();
-        if (error) throw error;
-        chatId = newChat.id;
-      }
-      navigate(`/chats/${chatId}`);
+      // Use SECURITY DEFINER RPC — Firebase users have no Supabase auth session
+      // @ts-ignore — custom RPC not in generated types
+      const { data: res, error } = await supabase.rpc("fn_create_chat", {
+        p_user_id: user.id,
+        p_product_id: product.id,
+        p_seller_id: product.seller_id,
+      });
+      const result = res as { error?: string; id?: string } | null;
+      if (error || result?.error) throw new Error(result?.error || error?.message);
+      navigate(`/chats/${result?.id}`);
     } catch (err: any) {
       toast.error(err.message || "Failed to start chat");
     } finally {
@@ -125,21 +117,37 @@ const ProductDetail = () => {
 
   const submitRating = async (rating: number) => {
     if (!user || !product) return;
-    const { error } = await supabase
-      .from("ratings")
-      .upsert({ rater_id: user.id, seller_id: product.seller_id, rating }, { onConflict: "rater_id,seller_id" });
-    if (!error) {
+    // @ts-ignore — custom RPC not in generated types
+    const { data: res, error } = await supabase.rpc("fn_upsert_rating", {
+      p_user_id: user.id,
+      p_seller_id: product.seller_id,
+      p_rating: rating,
+    });
+    const result = res as { error?: string } | null;
+    if (!error && !result?.error) {
       setUserRating(rating);
       toast.success("Rating submitted!");
+    } else {
+      toast.error(result?.error || error?.message || "Failed to submit rating");
     }
   };
 
   const submitReport = async () => {
     if (!user || !product || !reportReason.trim()) return;
-    await supabase.from("product_reports").insert({ product_id: product.id, reporter_id: user.id, reason: reportReason });
-    toast.success("Report submitted. We'll review it.");
-    setReportOpen(false);
-    setReportReason("");
+    // @ts-ignore — custom RPC not in generated types
+    const { data: res, error } = await supabase.rpc("fn_report_product", {
+      p_user_id: user.id,
+      p_product_id: product.id,
+      p_reason: reportReason.trim(),
+    });
+    const result = res as { error?: string } | null;
+    if (error || result?.error) {
+      toast.error(result?.error || error?.message || "Failed to submit report");
+    } else {
+      toast.success("Report submitted. We'll review it.");
+      setReportOpen(false);
+      setReportReason("");
+    }
   };
 
   if (loading) {

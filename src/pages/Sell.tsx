@@ -155,44 +155,49 @@ const Sell = () => {
 
       if (isEditMode && id) {
         // Track price reduction
-        const updateData: any = {
-          brand: form.brand,
-          name: form.name,
-          category: form.category as any,
-          condition: form.condition as any,
-          expiry_date: form.expiry_date || null,
-          original_price: parseFloat(form.original_price),
-          selling_price: newSellingPrice,
-          reason_for_selling: form.reason_for_selling || null,
-          images: allImages,
-          area: fullArea as any,
-        };
+        const previousPrice = originalSellingPrice !== null && newSellingPrice < originalSellingPrice
+          ? originalSellingPrice
+          : null;
+        const priceReducedAt = previousPrice !== null ? new Date().toISOString() : null;
 
-        // If price was reduced, track it
-        if (originalSellingPrice !== null && newSellingPrice < originalSellingPrice) {
-          updateData.previous_price = originalSellingPrice;
-          updateData.price_reduced_at = new Date().toISOString();
-        }
-
-        const { error } = await supabase.from("products").update(updateData).eq("id", id);
-        if (error) throw error;
+        // @ts-ignore — custom SECURITY DEFINER RPC (no Supabase auth session with Firebase)
+        const { data: res, error } = await supabase.rpc("fn_update_product", {
+          p_user_id: user.id,
+          p_product_id: id,
+          p_brand: form.brand,
+          p_name: form.name,
+          p_category: form.category,
+          p_condition: form.condition,
+          p_original_price: parseFloat(form.original_price),
+          p_selling_price: newSellingPrice,
+          p_images: allImages,
+          p_area: fullArea,
+          p_expiry_date: form.expiry_date || null,
+          p_reason: (form as any).reason_for_selling || null,
+          p_previous_price: previousPrice,
+          p_price_reduced_at: priceReducedAt,
+        });
+        const result = res as { error?: string } | null;
+        if (error || result?.error) throw new Error(result?.error || error?.message);
         toast.success("Product updated successfully! ✅");
       } else {
         // Create new product
-        const { error } = await supabase.from("products").insert({
-          seller_id: user.id,
-          brand: form.brand,
-          name: form.name,
-          category: form.category as any,
-          condition: form.condition as any,
-          expiry_date: form.expiry_date || null,
-          original_price: parseFloat(form.original_price),
-          selling_price: newSellingPrice,
-          reason_for_selling: form.reason_for_selling || null,
-          images: allImages,
-          area: fullArea as any,
+        // @ts-ignore — custom SECURITY DEFINER RPC (no Supabase auth session with Firebase)
+        const { data: res, error } = await supabase.rpc("fn_insert_product", {
+          p_user_id: user.id,
+          p_brand: form.brand,
+          p_name: form.name,
+          p_category: form.category,
+          p_condition: form.condition,
+          p_original_price: parseFloat(form.original_price),
+          p_selling_price: newSellingPrice,
+          p_images: allImages,
+          p_area: fullArea,
+          p_expiry_date: form.expiry_date || null,
+          p_reason: (form as any).reason_for_selling || null,
         });
-        if (error) throw error;
+        const result = res as { error?: string } | null;
+        if (error || result?.error) throw new Error(result?.error || error?.message);
         toast.success("Product listed successfully! 🎉");
       }
       navigate("/dashboard");
