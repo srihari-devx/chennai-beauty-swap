@@ -10,19 +10,56 @@
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- PART 0: Drop ALL foreign key constraints referencing auth.users(id)
+--
+-- Firebase-generated UUIDs do NOT exist in auth.users. Any FK to auth.users
+-- will cause "violates foreign key constraint" on every INSERT/UPDATE.
+-- The 20260715 bridge migration only dropped FKs on profiles + user_roles.
+-- This drops the remaining constraints on ALL other tables.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- products.seller_id → auth.users(id)
+ALTER TABLE public.products DROP CONSTRAINT IF EXISTS products_seller_id_fkey;
+
+-- chats.buyer_id → auth.users(id)
+ALTER TABLE public.chats DROP CONSTRAINT IF EXISTS chats_buyer_id_fkey;
+
+-- chats.seller_id → auth.users(id)
+ALTER TABLE public.chats DROP CONSTRAINT IF EXISTS chats_seller_id_fkey;
+
+-- messages.sender_id → auth.users(id)
+ALTER TABLE public.messages DROP CONSTRAINT IF EXISTS messages_sender_id_fkey;
+
+-- ratings.rater_id → auth.users(id)
+ALTER TABLE public.ratings DROP CONSTRAINT IF EXISTS ratings_rater_id_fkey;
+
+-- ratings.seller_id → auth.users(id)
+ALTER TABLE public.ratings DROP CONSTRAINT IF EXISTS ratings_seller_id_fkey;
+
+-- product_reports.reporter_id → auth.users(id)
+ALTER TABLE public.product_reports DROP CONSTRAINT IF EXISTS product_reports_reporter_id_fkey;
+
+-- feedback.user_id → auth.users(id)
+ALTER TABLE public.feedback DROP CONSTRAINT IF EXISTS feedback_user_id_fkey;
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- PART 1: Fix SELECT policies — open reads for Firebase users
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── Chats: allow reads (app filters by buyer_id/seller_id) ──
 DROP POLICY IF EXISTS "Chat participants can view their chats" ON public.chats;
+DROP POLICY IF EXISTS "Anyone can read chats" ON public.chats;
 CREATE POLICY "Anyone can read chats" ON public.chats FOR SELECT USING (true);
 
 -- ── Messages: allow reads (app filters by chat_id) ──
 DROP POLICY IF EXISTS "Chat participants can view messages" ON public.messages;
+DROP POLICY IF EXISTS "Anyone can read messages" ON public.messages;
 CREATE POLICY "Anyone can read messages" ON public.messages FOR SELECT USING (true);
 
 -- ── Wishlists: allow reads (app filters by user_id) ──
 DROP POLICY IF EXISTS "Users can view own wishlists" ON public.wishlists;
+DROP POLICY IF EXISTS "Users can view own wishlist" ON public.wishlists;
 DROP POLICY IF EXISTS "Anyone can read wishlists" ON public.wishlists;
 CREATE POLICY "Anyone can read wishlists" ON public.wishlists FOR SELECT USING (true);
 
@@ -32,6 +69,7 @@ DROP POLICY IF EXISTS "Anyone can read notifications" ON public.notifications;
 CREATE POLICY "Anyone can read notifications" ON public.notifications FOR SELECT USING (true);
 
 -- ── Product Views: allow reads (admin analytics) ──
+DROP POLICY IF EXISTS "Views are viewable by everyone" ON public.product_views;
 DROP POLICY IF EXISTS "Anyone can read product_views" ON public.product_views;
 CREATE POLICY "Anyone can read product_views" ON public.product_views FOR SELECT USING (true);
 
