@@ -29,6 +29,7 @@ const Browse = () => {
     let query = supabase
       .from("products")
       .select("*")
+      .eq("is_sold", false)
       .order("created_at", { ascending: false });
 
     if (category) query = query.eq("category", category as any);

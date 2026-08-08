@@ -41,6 +41,7 @@ const Sell = () => {
     expiry_date: "",
     original_price: "",
     selling_price: "",
+    reason_for_selling: "",
     city: "",
     state: "",
   });

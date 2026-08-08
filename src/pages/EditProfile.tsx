@@ -21,7 +21,7 @@ const parseArea = (areaString: string) => {
 };
 
 const EditProfile = () => {
-  const { user, profile, fetchProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [city, setCity] = useState("");
@@ -72,9 +72,7 @@ const EditProfile = () => {
       toast.error("Failed to update profile: " + error.message);
     } else {
       toast.success("Profile updated successfully!");
-      if (fetchProfile) {
-        await fetchProfile(); // Update context
-      }
+      await refreshProfile();
       navigate("/dashboard");
     }
   };

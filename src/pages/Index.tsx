@@ -134,6 +134,47 @@ const FaqItem = ({ question, answer }: { question: string; answer: string }) => 
   );
 };
 
+/* ─── Product Carousel ─── */
+const ProductCarousel = ({
+  products,
+  setApi,
+  api,
+  isWishlisted,
+  toggleWishlist,
+}: {
+  products: any[];
+  setApi: (api: CarouselApi) => void;
+  api: CarouselApi | undefined;
+  isWishlisted: (id: string) => boolean;
+  toggleWishlist: (id: string) => Promise<boolean>;
+}) => (
+  <div>
+    <Carousel
+      opts={{ align: "start", loop: true }}
+      setApi={setApi}
+      className="w-full"
+    >
+      <CarouselContent className="-ml-3">
+        {products.map((product) => (
+          <CarouselItem
+            key={product.id}
+            className="pl-3 basis-1/2 sm:basis-1/3 lg:basis-1/4"
+          >
+            <ProductCard
+              product={product}
+              isWishlisted={isWishlisted(product.id)}
+              onToggleWishlist={toggleWishlist}
+            />
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      <CarouselPrevious className="-left-3 md:-left-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
+      <CarouselNext className="-right-3 md:-right-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
+    </Carousel>
+    <CarouselDots api={api} />
+  </div>
+);
+
 /* ─── Main Page ─── */
 const Index = () => {
   const { user, profile } = useAuth();
@@ -232,43 +273,6 @@ const Index = () => {
     };
     fetchArticles();
   }, []);
-
-  /* ─── Product Carousel ─── */
-  const ProductCarousel = ({
-    products,
-    setApi,
-    api,
-  }: {
-    products: any[];
-    setApi: (api: CarouselApi) => void;
-    api: CarouselApi | undefined;
-  }) => (
-    <div>
-      <Carousel
-        opts={{ align: "start", loop: true }}
-        setApi={setApi}
-        className="w-full"
-      >
-        <CarouselContent className="-ml-3">
-          {products.map((product) => (
-            <CarouselItem
-              key={product.id}
-              className="pl-3 basis-1/2 sm:basis-1/3 lg:basis-1/4"
-            >
-              <ProductCard
-                product={product}
-                isWishlisted={isWishlisted(product.id)}
-                onToggleWishlist={toggleWishlist}
-              />
-            </CarouselItem>
-          ))}
-        </CarouselContent>
-        <CarouselPrevious className="-left-3 md:-left-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
-        <CarouselNext className="-right-3 md:-right-5 bg-card/90 backdrop-blur-sm border-border shadow-card hover:bg-card" />
-      </Carousel>
-      <CarouselDots api={api} />
-    </div>
-  );
 
   return (
     <div className="min-h-screen">
@@ -401,7 +405,7 @@ const Index = () => {
                 <Link to={`/browse?area=${profile?.area}`}>See All <ChevronRight className="w-4 h-4" /></Link>
               </Button>
             </div>
-            <ProductCarousel products={nearbyProducts} setApi={setNearbyApi} api={nearbyApi} />
+            <ProductCarousel products={nearbyProducts} setApi={setNearbyApi} api={nearbyApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} />
           </div>
         </section>
       )}
@@ -419,7 +423,7 @@ const Index = () => {
                 <Link to="/browse">See All <ChevronRight className="w-4 h-4" /></Link>
               </Button>
             </div>
-            <ProductCarousel products={trendingProducts} setApi={setTrendingApi} api={trendingApi} />
+            <ProductCarousel products={trendingProducts} setApi={setTrendingApi} api={trendingApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} />
           </div>
         </section>
       )}
@@ -437,7 +441,7 @@ const Index = () => {
             </Button>
           </div>
           {recentProducts.length > 0 ? (
-            <ProductCarousel products={recentProducts} setApi={setRecentApi} api={recentApi} />
+            <ProductCarousel products={recentProducts} setApi={setRecentApi} api={recentApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} />
           ) : (
             <div className="text-center py-16 bg-background rounded-2xl border border-dashed border-border">
               <div className="text-4xl mb-3">✨</div>

@@ -80,13 +80,18 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       [scrollPrev, scrollNext],
     );
 
+    const setApiRef = React.useRef(setApi);
     React.useEffect(() => {
-      if (!api || !setApi) {
+      setApiRef.current = setApi;
+    });
+
+    React.useEffect(() => {
+      if (!api || !setApiRef.current) {
         return;
       }
 
-      setApi(api);
-    }, [api, setApi]);
+      setApiRef.current(api);
+    }, [api]);
 
     React.useEffect(() => {
       if (!api) {
