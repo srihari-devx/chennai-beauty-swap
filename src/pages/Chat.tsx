@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, ArrowLeft, ShoppingBag } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
+import { toast } from "sonner";
 
 interface Chat {
   id: string;
@@ -75,7 +76,7 @@ const ChatWindow = () => {
       .channel(`chat-${chatId}`)
       .on("broadcast", { event: "new-message" }, (payload) => {
         setMessages(prev => {
-          if (prev.some(m => m.id === payload.payload.id || (m.content === payload.payload.content && m.sender_id === payload.payload.sender_id && Math.abs(new Date(m.created_at).getTime() - new Date(payload.payload.created_at).getTime()) < 5000))) return prev;
+          if (prev.some(m => m.id === payload.payload.id)) return prev;
           return [...prev, payload.payload as Message];
         });
       })
@@ -86,10 +87,8 @@ const ChatWindow = () => {
         filter: `chat_id=eq.${chatId}`,
       }, (payload) => {
         setMessages(prev => {
-          // deduplicate if we already received it via broadcast or optimistic update
-          if (prev.some(m => m.content === payload.new.content && m.sender_id === payload.new.sender_id && Math.abs(new Date(m.created_at).getTime() - new Date(payload.new.created_at).getTime()) < 5000)) {
-            return prev;
-          }
+          // Skip if we already have this message (sent by us with the real id)
+          if (prev.some(m => m.id === payload.new.id)) return prev;
           return [...prev, payload.new as Message];
         });
       })
@@ -112,30 +111,52 @@ const ChatWindow = () => {
     if (!input.trim() || !user || !chatId || !chat) return;
     setSending(true);
     const content = input.trim();
+    const tempId = crypto.randomUUID();
     setInput("");
 
-    // Optimistic update
-    const newMessage: Message = {
-      id: crypto.randomUUID(),
+    // Optimistic update — add message immediately with a temp id
+    const optimisticMessage: Message = {
+      id: tempId,
       chat_id: chatId,
       sender_id: user.id,
       content,
       created_at: new Date().toISOString(),
     };
-    
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => [...prev, optimisticMessage]);
 
+    // Broadcast to the other user's realtime channel immediately
     if (channelRef.current) {
       channelRef.current.send({
         type: "broadcast",
         event: "new-message",
-        payload: newMessage
+        payload: optimisticMessage,
       });
     }
 
-    supabase.from("messages").insert({ chat_id: chatId, sender_id: user.id, content }).then(() => {});
+    // Await the DB insert — do NOT fire-and-forget
+    const { data: inserted, error: insertError } = await supabase
+      .from("messages")
+      .insert({ chat_id: chatId, sender_id: user.id, content })
+      .select()
+      .single();
 
-    // Send notification to the other user
+    if (insertError) {
+      // Roll back the optimistic message
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setInput(content); // restore what they typed
+      toast.error("Failed to send message. Please try again.");
+      setSending(false);
+      return;
+    }
+
+    // Replace temp id with real DB id so realtime deduplication works correctly
+    if (inserted) {
+      setMessages(prev =>
+        prev.map(m => m.id === tempId ? { ...m, id: inserted.id } : m)
+      );
+    }
+
+    // Send notification to the other user (fire and forget — non-critical)
     // M-3 fix: Don't embed message content in notifications — use generic text only
     const recipientId = chat.buyer_id === user.id ? chat.seller_id : chat.buyer_id;
     const senderName = myProfile?.full_name || "Someone";
@@ -143,9 +164,9 @@ const ChatWindow = () => {
       user_id: recipientId,
       type: "message",
       title: `New message from ${senderName}`,
-      message: "You have a new message. Open the chat to read it.",  // generic — no content leak
+      message: "You have a new message. Open the chat to read it.",
       related_id: chatId,
-    }).then(() => {}); // fire and forget
+    }).then(() => {});
 
     setSending(false);
   };
