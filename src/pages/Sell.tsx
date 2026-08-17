@@ -97,12 +97,42 @@ const Sell = () => {
     fetchProduct();
   }, [id, user, isEditMode]);
 
+  // Fix #13: Validate file type, size, and format before accepting
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per image
+  const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".avif"];
+
+  const validateImageFile = (file: File): string | null => {
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+      return `"${file.name}" exceeds 5MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB)`;
+    }
+    // Check MIME type
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      return `"${file.name}" is not a supported image format. Use JPEG, PNG, or WebP.`;
+    }
+    // Check extension (defense in depth)
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return `"${file.name}" has an unsupported file extension.`;
+    }
+    return null;
+  };
+
   const handleImageAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const totalImages = existingImages.length - removedExistingImages.length + images.length + files.length;
     if (totalImages > 5) {
       toast.error("Maximum 5 images allowed");
       return;
+    }
+    // Validate each file
+    for (const file of files) {
+      const error = validateImageFile(file);
+      if (error) {
+        toast.error(error);
+        return;
+      }
     }
     const newFiles = [...images, ...files].slice(0, 5 - (existingImages.length - removedExistingImages.length));
     setImages(newFiles);
@@ -131,6 +161,22 @@ const Sell = () => {
       toast.error("Please upload at least one image");
       return;
     }
+
+    // Fix #19: Business validation — enforce positive prices and valid data
+    const originalPrice = parseFloat(form.original_price);
+    const sellingPrice = parseFloat(form.selling_price);
+
+    if (!form.brand.trim()) { toast.error("Brand name is required."); return; }
+    if (!form.name.trim()) { toast.error("Product name is required."); return; }
+    if (!form.city.trim()) { toast.error("City is required."); return; }
+    if (!form.state) { toast.error("State is required."); return; }
+    if (isNaN(originalPrice) || originalPrice <= 0) { toast.error("Original price must be greater than ₹0."); return; }
+    if (isNaN(sellingPrice) || sellingPrice <= 0) { toast.error("Selling price must be greater than ₹0."); return; }
+    if (sellingPrice > originalPrice) { toast.error("Selling price cannot exceed original price."); return; }
+    if (form.brand.trim().length > 100) { toast.error("Brand name is too long (max 100 characters)."); return; }
+    if (form.name.trim().length > 200) { toast.error("Product name is too long (max 200 characters)."); return; }
+    if (form.reason_for_selling && form.reason_for_selling.length > 1000) { toast.error("Reason is too long (max 1000 characters)."); return; }
+
     setLoading(true);
 
     try {

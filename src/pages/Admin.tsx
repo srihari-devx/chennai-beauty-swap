@@ -234,62 +234,27 @@ const Admin = () => {
   const _doDeleteUser = async (userId: string) => {
     setManagingUserId(userId);
     try {
-      // Get user's product IDs first (needed for cascading deletes)
-      const { data: userProducts } = await supabase
-        .from("products")
-        .select("id")
-        .eq("seller_id", userId);
-      const productIds = (userProducts || []).map(p => p.id);
-
-      // Delete related data in correct order
-      if (productIds.length > 0) {
-        await supabase.from("product_views").delete().in("product_id", productIds);
-        await supabase.from("product_reports").delete().in("product_id", productIds);
-        await supabase.from("wishlists").delete().in("product_id", productIds);
-        // Delete chats & messages for user's products
-        const { data: chats } = await supabase.from("chats").select("id").in("product_id", productIds);
-        const chatIds = (chats || []).map(c => c.id);
-        if (chatIds.length > 0) {
-          await supabase.from("messages").delete().in("chat_id", chatIds);
-        }
-        await supabase.from("chats").delete().in("product_id", productIds);
-        await supabase.from("products").delete().eq("seller_id", userId);
-      }
-
-      // Delete user's own chats as buyer
-      const { data: buyerChats } = await supabase.from("chats").select("id").eq("buyer_id", userId);
-      const buyerChatIds = (buyerChats || []).map(c => c.id);
-      if (buyerChatIds.length > 0) {
-        await supabase.from("messages").delete().in("chat_id", buyerChatIds);
-        await supabase.from("chats").delete().eq("buyer_id", userId);
-      }
-
-      // Delete remaining user-specific data
-      await supabase.from("wishlists").delete().eq("user_id", userId);
-      await supabase.from("notifications").delete().eq("user_id", userId);
-      await supabase.from("ratings").delete().eq("rater_id", userId);
-      await supabase.from("ratings").delete().eq("seller_id", userId);
-      await supabase.from("seller_badges").delete().eq("user_id", userId);
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-
-      // Finally delete the profile
-      const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
-      if (error) throw error;
-
-      // Delete from auth.users via secure SQL RPC
-      // @ts-ignore
-      const { error: rpcError } = await supabase.rpc("admin_delete_user", {
-        target_user_id: userId,
+      // Fix #11: Use server-side Edge Function for atomic cascade deletion
+      // instead of 15+ sequential client-side queries
+      const res = await supabase.functions.invoke("delete-user", {
+        body: { userId },
       });
-      if (rpcError) {
-        console.warn("Auth user deletion warning:", rpcError.message);
+
+      if (res.error) {
+        const serverMsg = res.data?.error || res.error.message || "Unknown error";
+        toast.error(serverMsg);
+        return;
+      }
+
+      if (res.data?.error) {
+        toast.error(res.data.error);
+        return;
       }
 
       setUsers(u => u.filter(user => user.user_id !== userId));
       setStats(s => ({ ...s, users: s.users - 1 }));
       toast.success("User and all their data deleted successfully");
     } catch {
-      // L-7 fix: Generic error message — don't expose internal DB errors
       toast.error("Failed to delete user. Please try again.");
     } finally {
       setManagingUserId(null);
