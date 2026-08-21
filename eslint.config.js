@@ -22,6 +22,11 @@ export default tseslint.config(
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "warn",
+      "no-restricted-globals": ["error",
+        { "name": "confirm", "message": "Use toast-based confirmation instead of window.confirm() (L-6 audit fix)." },
+        { "name": "alert", "message": "Use toast notifications instead of window.alert()." },
+        { "name": "prompt", "message": "Use a form input instead of window.prompt()." },
+      ],
     },
   },
 );

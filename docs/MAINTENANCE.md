@@ -60,6 +60,25 @@ supabase db push
 
 Backend Deno Edge Functions are located in `supabase/functions/`.
 
+### Active Functions
+
+| Function | Purpose | Auth Required |
+|----------|---------|---------------|
+| `setup-admin` | Grant admin role to existing verified users | Yes (admin) |
+
+> **Deleted Functions (Security Audit 2, Aug 2026):**
+> - `send-otp` — **Deleted from source**: unauthenticated abuse surface, no frontend references, replaced by Supabase Auth native flow.
+> - `delete-user` — **Deleted from source**: non-atomic sequential deletion replaced by `admin_delete_user_cascade` database RPC.
+
+### User Deletion Workflow
+
+Admin user deletion now uses the **atomic database RPC** `admin_delete_user_cascade` instead of a sequential Edge Function. This runs in a single PostgreSQL transaction — if any step fails, everything rolls back.
+
+```
+Admin.tsx → supabase.rpc("admin_delete_user_cascade") → Single transaction
+         → supabase.storage cleanup (best-effort, post-RPC)
+```
+
 ### Local Execution (Testing)
 ```bash
 # Run Deno function servers locally
@@ -70,10 +89,17 @@ Access the function endpoint locally at `http://localhost:54321/functions/v1/[fu
 ### Production Deployment
 ```bash
 # Deploy to Supabase cloud hosting
-supabase functions deploy delete-user
-supabase functions deploy send-otp
 supabase functions deploy setup-admin
 ```
+
+### Manual Dashboard Steps (Post-Deployment)
+
+After deploying source changes, perform these steps in the **Supabase Dashboard**:
+
+1. **Run migration**: SQL Editor → Paste `20260819_security_audit2_fixes.sql` → Execute
+2. **Undeploy send-otp**: Edge Functions → `send-otp` → Delete
+3. **Undeploy delete-user**: Edge Functions → `delete-user` → Delete
+4. **Verify policies**: Run the verification queries at the end of the migration file
 
 ---
 

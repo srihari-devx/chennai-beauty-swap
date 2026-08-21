@@ -234,21 +234,33 @@ const Admin = () => {
   const _doDeleteUser = async (userId: string) => {
     setManagingUserId(userId);
     try {
-      // Fix #11: Use server-side Edge Function for atomic cascade deletion
-      // instead of 15+ sequential client-side queries
-      const res = await supabase.functions.invoke("delete-user", {
-        body: { userId },
+      // H-3 Fix: Use atomic database RPC for cascade deletion
+      // Runs in a single transaction — if any step fails, everything rolls back
+      const { data, error } = await supabase.rpc("admin_delete_user_cascade", {
+        target_user_id: userId,
       });
 
-      if (res.error) {
-        const serverMsg = res.data?.error || res.error.message || "Unknown error";
-        toast.error(serverMsg);
+      if (error) {
+        toast.error(error.message || "Failed to delete user.");
         return;
       }
 
-      if (res.data?.error) {
-        toast.error(res.data.error);
+      if (data && typeof data === "object" && "error" in data) {
+        toast.error(String((data as Record<string, unknown>).error));
         return;
+      }
+
+      // Best-effort storage cleanup (RPC can't access Supabase Storage)
+      try {
+        const { data: files } = await supabase.storage
+          .from("product-images")
+          .list(userId);
+        if (files && files.length > 0) {
+          const filePaths = files.map((f) => `${userId}/${f.name}`);
+          await supabase.storage.from("product-images").remove(filePaths);
+        }
+      } catch {
+        // Storage cleanup is best-effort — don't fail the operation
       }
 
       setUsers(u => u.filter(user => user.user_id !== userId));

@@ -81,13 +81,19 @@ const Dashboard = () => {
     }
   };
 
-  const deleteListing = async (id: string) => {
-    if (!confirm("Delete this listing? This cannot be undone.")) return;
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (!error) {
-      setListings(l => l.filter(p => p.id !== id));
-      toast.success("Listing deleted");
-    }
+  const deleteListing = (id: string) => {
+    // L-6 fix: Replace native confirm() with toast-based confirmation
+    toast("Delete this listing? This cannot be undone.", {
+      action: { label: "Delete", onClick: async () => {
+        const { error } = await supabase.from("products").delete().eq("id", id);
+        if (!error) {
+          setListings(l => l.filter(p => p.id !== id));
+          toast.success("Listing deleted");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
   };
 
   return (

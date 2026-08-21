@@ -229,3 +229,318 @@ describe("URL validation for cover images", () => {
     expect(url.startsWith("https://")).toBe(false);
   });
 });
+
+// ─── Audit H-1: Notification Type Whitelist ───
+describe("Notification type validation (H-1)", () => {
+  const ALLOWED_NOTIFICATION_TYPES = ["message", "system", "rating", "badge"];
+
+  const isValidNotificationType = (type: string): boolean => {
+    return ALLOWED_NOTIFICATION_TYPES.includes(type);
+  };
+
+  it("should accept valid notification types", () => {
+    expect(isValidNotificationType("message")).toBe(true);
+    expect(isValidNotificationType("system")).toBe(true);
+    expect(isValidNotificationType("rating")).toBe(true);
+    expect(isValidNotificationType("badge")).toBe(true);
+  });
+
+  it("should reject unknown notification types", () => {
+    expect(isValidNotificationType("phishing")).toBe(false);
+    expect(isValidNotificationType("admin")).toBe(false);
+    expect(isValidNotificationType("")).toBe(false);
+    expect(isValidNotificationType("custom")).toBe(false);
+  });
+
+  it("should reject injection attempts in notification types", () => {
+    expect(isValidNotificationType("message'; DROP TABLE--")).toBe(false);
+    expect(isValidNotificationType("<script>alert(1)</script>")).toBe(false);
+  });
+});
+
+// ─── Audit H-2: Badge Insert Restriction ───
+describe("Badge insert restriction (H-2)", () => {
+  const VALID_BADGE_TYPES = [
+    "verified_seller", "top_rated", "fast_shipper",
+    "trusted", "power_seller"
+  ];
+
+  const isValidBadgeType = (badge: string): boolean => {
+    return typeof badge === "string" && badge.trim().length > 0 && badge.length <= 50;
+  };
+
+  it("should accept valid badge types", () => {
+    VALID_BADGE_TYPES.forEach(badge => {
+      expect(isValidBadgeType(badge)).toBe(true);
+    });
+  });
+
+  it("should reject empty badge types", () => {
+    expect(isValidBadgeType("")).toBe(false);
+    expect(isValidBadgeType("   ")).toBe(false);
+  });
+
+  it("should reject excessively long badge types", () => {
+    expect(isValidBadgeType("A".repeat(51))).toBe(false);
+  });
+});
+
+// ─── Audit H-3: Atomic Deletion RPC Parameter Validation ───
+describe("Atomic deletion parameter validation (H-3)", () => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const validateDeleteParams = (
+    targetUserId: string,
+    callerUserId: string
+  ): string | null => {
+    if (!targetUserId || !uuidRegex.test(targetUserId)) {
+      return "Invalid target user ID";
+    }
+    if (!callerUserId || !uuidRegex.test(callerUserId)) {
+      return "Invalid caller user ID";
+    }
+    if (targetUserId === callerUserId) {
+      return "Cannot delete your own account";
+    }
+    return null;
+  };
+
+  it("should accept valid delete parameters", () => {
+    expect(validateDeleteParams(
+      "550e8400-e29b-41d4-a716-446655440000",
+      "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+    )).toBeNull();
+  });
+
+  it("should reject self-deletion", () => {
+    const sameId = "550e8400-e29b-41d4-a716-446655440000";
+    expect(validateDeleteParams(sameId, sameId)).toContain("own account");
+  });
+
+  it("should reject invalid target user IDs", () => {
+    expect(validateDeleteParams(
+      "not-a-uuid",
+      "550e8400-e29b-41d4-a716-446655440000"
+    )).toContain("Invalid target");
+  });
+
+  it("should reject empty target user IDs", () => {
+    expect(validateDeleteParams(
+      "",
+      "550e8400-e29b-41d4-a716-446655440000"
+    )).toContain("Invalid target");
+  });
+});
+
+// ─── Notification Insert Context Validation ───
+describe("Notification insert context validation", () => {
+  const validateNotificationInsert = (notification: {
+    user_id: string | null;
+    sender_id: string | null;
+    type: string;
+  }): string | null => {
+    if (!notification.user_id) return "Recipient user_id required";
+    if (!notification.sender_id) return "Sender must be authenticated";
+    if (notification.user_id === notification.sender_id) {
+      return "Cannot send notification to yourself";
+    }
+    const allowedTypes = ["message", "system", "rating", "badge"];
+    if (!allowedTypes.includes(notification.type)) {
+      return "Invalid notification type";
+    }
+    return null;
+  };
+
+  it("should accept valid notification with different sender and recipient", () => {
+    expect(validateNotificationInsert({
+      user_id: "550e8400-e29b-41d4-a716-446655440000",
+      sender_id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      type: "message",
+    })).toBeNull();
+  });
+
+  it("should reject notification to self", () => {
+    const sameId = "550e8400-e29b-41d4-a716-446655440000";
+    expect(validateNotificationInsert({
+      user_id: sameId,
+      sender_id: sameId,
+      type: "message",
+    })).toContain("yourself");
+  });
+
+  it("should reject notification without recipient", () => {
+    expect(validateNotificationInsert({
+      user_id: null,
+      sender_id: "550e8400-e29b-41d4-a716-446655440000",
+      type: "message",
+    })).toContain("required");
+  });
+
+  it("should reject notification without authenticated sender", () => {
+    expect(validateNotificationInsert({
+      user_id: "550e8400-e29b-41d4-a716-446655440000",
+      sender_id: null,
+      type: "message",
+    })).toContain("authenticated");
+  });
+
+  it("should reject notification with invalid type", () => {
+    expect(validateNotificationInsert({
+      user_id: "550e8400-e29b-41d4-a716-446655440000",
+      sender_id: "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      type: "phishing",
+    })).toContain("Invalid");
+  });
+});
+
+// ─── Chat Notification Sender Validation ───
+describe("Chat notification sender validation", () => {
+  const validateChatNotification = (
+    senderId: string,
+    recipientId: string,
+    type: string
+  ): string | null => {
+    if (!senderId) return "Sender must be authenticated";
+    if (!recipientId) return "Recipient is required";
+    if (senderId === recipientId) return "Cannot notify yourself";
+    const allowedTypes = ["message", "system", "rating", "badge"];
+    if (!allowedTypes.includes(type)) return "Invalid notification type";
+    return null;
+  };
+
+  it("should accept valid chat notification (sender != recipient)", () => {
+    expect(validateChatNotification(
+      "550e8400-e29b-41d4-a716-446655440000",
+      "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "message"
+    )).toBeNull();
+  });
+
+  it("should reject self-notification in chat", () => {
+    const sameId = "550e8400-e29b-41d4-a716-446655440000";
+    expect(validateChatNotification(sameId, sameId, "message")).toContain("yourself");
+  });
+
+  it("should reject chat notification without sender", () => {
+    expect(validateChatNotification(
+      "",
+      "550e8400-e29b-41d4-a716-446655440000",
+      "message"
+    )).toContain("authenticated");
+  });
+
+  it("should reject chat notification with invalid type", () => {
+    expect(validateChatNotification(
+      "550e8400-e29b-41d4-a716-446655440000",
+      "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "spam"
+    )).toContain("Invalid");
+  });
+});
+
+// ─── Cover Image URL Scheme Whitelist (L-8) ───
+describe("Cover image URL scheme whitelist (L-8)", () => {
+  const validateCoverImageUrl = (url: string): string | null => {
+    if (!url) return null; // empty is allowed (optional field)
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    if (!trimmed.startsWith("https://")) {
+      return "Cover image URL must start with https://";
+    }
+    return null;
+  };
+
+  it("should accept valid HTTPS URLs", () => {
+    expect(validateCoverImageUrl("https://images.unsplash.com/photo-123")).toBeNull();
+    expect(validateCoverImageUrl("https://example.supabase.co/storage/v1/object/public/img.jpg")).toBeNull();
+  });
+
+  it("should accept empty URL (optional field)", () => {
+    expect(validateCoverImageUrl("")).toBeNull();
+    expect(validateCoverImageUrl("   ")).toBeNull();
+  });
+
+  it("should reject HTTP URLs", () => {
+    expect(validateCoverImageUrl("http://example.com/image.jpg")).toContain("https://");
+  });
+
+  it("should reject javascript: URLs (XSS)", () => {
+    expect(validateCoverImageUrl("javascript:alert(document.cookie)")).toContain("https://");
+  });
+
+  it("should reject data: URLs", () => {
+    expect(validateCoverImageUrl("data:text/html,<script>alert(1)</script>")).toContain("https://");
+  });
+
+  it("should reject ftp: URLs", () => {
+    expect(validateCoverImageUrl("ftp://files.example.com/img.jpg")).toContain("https://");
+  });
+
+  it("should reject relative paths", () => {
+    expect(validateCoverImageUrl("/images/logo.png")).toContain("https://");
+    expect(validateCoverImageUrl("../uploads/exploit.svg")).toContain("https://");
+  });
+});
+
+// ─── Article Field Truncation (M-2) ───
+describe("Article field truncation (M-2)", () => {
+  const truncateArticleFields = (article: {
+    title: string;
+    content: string;
+    excerpt: string;
+  }) => ({
+    title: article.title.trim().slice(0, 300),
+    content: article.content.trim().slice(0, 50000),
+    excerpt: article.excerpt.trim().slice(0, 500) || null,
+  });
+
+  it("should preserve short fields as-is", () => {
+    const result = truncateArticleFields({
+      title: "My Article",
+      content: "Some content here.",
+      excerpt: "A brief excerpt.",
+    });
+    expect(result.title).toBe("My Article");
+    expect(result.content).toBe("Some content here.");
+    expect(result.excerpt).toBe("A brief excerpt.");
+  });
+
+  it("should truncate title at 300 characters", () => {
+    const longTitle = "A".repeat(500);
+    const result = truncateArticleFields({ title: longTitle, content: "ok", excerpt: "ok" });
+    expect(result.title.length).toBe(300);
+  });
+
+  it("should truncate content at 50000 characters", () => {
+    const longContent = "B".repeat(60000);
+    const result = truncateArticleFields({ title: "ok", content: longContent, excerpt: "ok" });
+    expect(result.content.length).toBe(50000);
+  });
+
+  it("should truncate excerpt at 500 characters", () => {
+    const longExcerpt = "C".repeat(600);
+    const result = truncateArticleFields({ title: "ok", content: "ok", excerpt: longExcerpt });
+    expect(result.excerpt!.length).toBe(500);
+  });
+
+  it("should return null for empty excerpt", () => {
+    const result = truncateArticleFields({ title: "ok", content: "ok", excerpt: "" });
+    expect(result.excerpt).toBeNull();
+  });
+
+  it("should return null for whitespace-only excerpt", () => {
+    const result = truncateArticleFields({ title: "ok", content: "ok", excerpt: "   " });
+    expect(result.excerpt).toBeNull();
+  });
+
+  it("should trim leading/trailing whitespace from all fields", () => {
+    const result = truncateArticleFields({
+      title: "  padded title  ",
+      content: "  padded content  ",
+      excerpt: "  padded excerpt  ",
+    });
+    expect(result.title).toBe("padded title");
+    expect(result.content).toBe("padded content");
+    expect(result.excerpt).toBe("padded excerpt");
+  });
+});
