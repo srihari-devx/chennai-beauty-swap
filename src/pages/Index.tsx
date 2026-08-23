@@ -10,6 +10,7 @@ import NewsletterSection from "@/components/NewsletterSection";
 import FeedbackForm from "@/components/FeedbackForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWishlist } from "@/hooks/useWishlist";
+import { useSEO } from "@/hooks/useSEO";
 import {
   Carousel,
   CarouselContent,
@@ -179,6 +180,13 @@ const ProductCarousel = ({
 const Index = () => {
   const { user, profile } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
+
+  useSEO({
+    title: "Swaptics | Buy & Sell Unused & Gently Used Cosmetics in India",
+    description: "India's hyperlocal marketplace to buy, sell, and swap unused & gently used cosmetics. Connect with beauty lovers in your neighborhood — safe, affordable, zero delivery hassle.",
+    type: "website",
+  });
+
   const [recentProducts, setRecentProducts] = useState<any[]>([]);
   const [nearbyProducts, setNearbyProducts] = useState<any[]>([]);
   const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
@@ -316,7 +324,7 @@ const Index = () => {
             Reduce Waste.
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed">
-            India's hyperlocal marketplace to buy, sell, and swap unused cosmetics.
+            India's hyperlocal marketplace to buy, sell, and swap unused & gently used cosmetics.
             Connect with beauty lovers in your area — no payments, no delivery hassle.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -624,9 +632,11 @@ const Index = () => {
       <div className="bg-muted/50 border-t border-border px-4 py-4 text-center">
         <p className="text-xs text-muted-foreground max-w-3xl mx-auto leading-relaxed">
           ⚠️ <strong>Disclaimer:</strong> This platform only connects buyers and sellers. We are not responsible for product authenticity, allergic reactions, or transaction disputes. Meet only in public places. By using Swaptics, you agree to our{" "}
-          <Link to="/terms" className="text-primary hover:underline font-medium">terms of service</Link>{" "}
-          and{" "}
-          <Link to="/privacy" className="text-primary hover:underline font-medium">privacy policy</Link>.
+          <Link to="/terms" className="text-primary hover:underline font-medium">terms of service</Link>
+          {", "}
+          <Link to="/privacy" className="text-primary hover:underline font-medium">privacy policy</Link>
+          {", and "}
+          <Link to="/grievance" className="text-primary hover:underline font-medium">grievance redressal</Link>.
         </p>
       </div>
     </div>

@@ -8,6 +8,7 @@ import { Search, SlidersHorizontal, X, Sparkles } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { PRODUCT_CATEGORIES, PRODUCT_CONDITIONS, INDIAN_STATES } from "@/lib/constants";
+import { useSEO } from "@/hooks/useSEO";
 
 const Browse = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,6 +22,14 @@ const Browse = () => {
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [showFilters, setShowFilters] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Finding 13: Dynamic SEO metadata based on filter
+  const categoryLabel = PRODUCT_CATEGORIES.find(c => c.value === category)?.label;
+  useSEO({
+    title: categoryLabel ? `Browse ${categoryLabel}` : "Browse All Cosmetics & Beauty Swaps",
+    description: `Explore unused skincare, makeup, haircare, and fragrances from trusted beauty community members. Filter by brand, condition, price, and location.`,
+    type: "website",
+  });
 
   const fetchProducts = useCallback(async (searchTerm?: string) => {
     setLoading(true);
@@ -76,7 +85,7 @@ const Browse = () => {
     const priceLow = Math.max(0, avgPrice * 0.5);
     const priceHigh = avgPrice * 2;
 
-    let recQuery = supabase
+    const recQuery = supabase
       .from("products")
       .select("*")
       .in("category", matchedCategories as any)
@@ -292,6 +301,14 @@ const Browse = () => {
 
         {/* Products Grid */}
         <div className="flex-1">
+          <div className="mb-4">
+            <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
+              {category ? `${PRODUCT_CATEGORIES.find(c => c.value === category)?.label || category} Cosmetics` : "Browse Beauty Products"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Find unused and gently used makeup, skincare, and beauty essentials across India.
+            </p>
+          </div>
           <div className="flex items-center justify-between mb-6">
             <p className="text-muted-foreground text-sm">
               {loading ? "Loading..." : `${products.length} product${products.length !== 1 ? "s" : ""} found`}

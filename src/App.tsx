@@ -88,6 +88,7 @@ const App = () => (
                     } />
                     <Route path="/terms" element={<TermsOfService defaultTab="terms" />} />
                     <Route path="/privacy" element={<TermsOfService defaultTab="privacy" />} />
+                    <Route path="/grievance" element={<TermsOfService defaultTab="grievance" />} />
                     <Route path="/articles" element={<Articles />} />
                     <Route path="/articles/:id" element={<ArticleDetail />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

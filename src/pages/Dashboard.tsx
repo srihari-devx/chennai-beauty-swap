@@ -107,7 +107,7 @@ const Dashboard = () => {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-1.5">
-                <h2 className="font-display text-xl font-bold text-foreground">{profile?.full_name}</h2>
+                <h1 className="font-display text-xl font-bold text-foreground">{profile?.full_name}</h1>
                 {isVerified && <VerifiedBadge size="md" />}
               </div>
               <div className="flex items-center gap-3 mt-1 flex-wrap">

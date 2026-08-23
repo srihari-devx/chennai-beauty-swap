@@ -75,99 +75,74 @@ Deno.serve(async (req) => {
     });
   }
 
-  const { email } = body;
+  const { userId } = body;
 
-  if (!email || typeof email !== "string") {
-    return new Response(JSON.stringify({ error: "Valid email is required" }), {
+  if (!userId || typeof userId !== "string") {
+    return new Response(JSON.stringify({ error: "Valid userId is required" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.trim())) {
-    return new Response(JSON.stringify({ error: "Invalid email format" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const normalizedEmail = email.trim().toLowerCase();
-
-  // ─── Find existing user by email (Finding 3 Fix: Use supported listUsers API) ───
-  let userId: string | undefined;
+  // ─── Perform Service-Role Storage Cleanup (Finding 4 Remediation) ───
+  let deletedCount = 0;
+  let errorDetail: string | null = null;
 
   try {
-    const { data: usersData, error: listError } = await supabase.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
+    const { data: files, error: listError } = await supabase.storage
+      .from("product-images")
+      .list(userId);
 
-    if (!listError && usersData?.users) {
-      const user = usersData.users.find(
-        (u: any) => u.email?.toLowerCase() === normalizedEmail
-      );
-      if (user) {
-        if (user.email_confirmed_at || user.confirmed_at) {
-          userId = user.id;
-        } else {
-          return new Response(JSON.stringify({
-            error: "User exists but email is not verified. They must verify their email first.",
-          }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
+    if (listError) {
+      errorDetail = listError.message;
+    } else if (files && files.length > 0) {
+      const filePaths = files.map((f: { name: string }) => `${userId}/${f.name}`);
+      const { data: removed, error: removeError } = await supabase.storage
+        .from("product-images")
+        .remove(filePaths);
+
+      if (removeError) {
+        errorDetail = removeError.message;
+      } else {
+        deletedCount = removed?.length ?? filePaths.length;
       }
     }
-  } catch (_err) {
+  } catch (err: any) {
+    errorDetail = err?.message || "Storage operation failed";
+  }
+
+  // ─── Record Storage Cleanup in Admin Audit Log (Finding 9) ───
+  try {
+    await supabase.from("admin_audit_log").insert({
+      admin_id: caller.id,
+      action: "storage_cleanup",
+      target_user_id: userId,
+      details: {
+        bucket: "product-images",
+        deleted_count: deletedCount,
+        error: errorDetail,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (_logErr) {
+    // Non-blocking log attempt
+  }
+
+  if (errorDetail) {
     return new Response(JSON.stringify({
-      error: "User lookup failed. Please try again.",
+      success: false,
+      warning: `Storage cleanup partial failure: ${errorDetail}`,
+      deletedCount,
     }), {
-      status: 500,
+      status: 200, // Return 200 with warning so user cascade deletion proceeds
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  if (!userId) {
-    return new Response(JSON.stringify({
-      error: "User not found. They must sign up and verify their email first.",
-    }), {
-      status: 404,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // ─── Grant admin role ───
-  const { error: upsertError } = await supabase
-    .from("user_roles")
-    .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
-
-  if (upsertError) {
-    return new Response(JSON.stringify({
-      error: "Failed to grant admin role. Please try again.",
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // ─── Record immutable audit log entry (Finding 9 Fix) ───
-  await supabase.from("admin_audit_log").insert({
-    admin_id: caller.id,
-    action: "grant_admin",
-    target_user_id: userId,
-    details: {
-      granted_email: normalizedEmail,
-      timestamp: new Date().toISOString(),
-    },
-  });
 
   return new Response(JSON.stringify({
     success: true,
-    userId,
-    message: `Admin role granted to ${normalizedEmail}`,
+    deletedCount,
+    message: `Cleaned up ${deletedCount} storage items for user ${userId}`,
   }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });

@@ -4,6 +4,7 @@ import { cleanImageUrl } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { useSEO } from "@/hooks/useSEO";
 import {
   ArrowRight,
   Newspaper,
@@ -70,6 +71,13 @@ const Articles = () => {
   const { user } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Finding 13: Route-level SEO metadata
+  useSEO({
+    title: "Beauty Articles, Guides & Community Updates",
+    description: "Read the latest beauty care routines, cosmetic safety tips, sustainable beauty hacks, and Swaptics community updates.",
+    type: "blog",
+  });
 
   useEffect(() => {
     const fetchArticles = async () => {

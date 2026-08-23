@@ -156,16 +156,11 @@ const ChatWindow = () => {
       );
     }
 
-    // Send notification to the other user (fire and forget — non-critical)
-    // M-3 fix: Don't embed message content in notifications — use generic text only
-    const recipientId = chat.buyer_id === user.id ? chat.seller_id : chat.buyer_id;
-    const senderName = myProfile?.full_name || "Someone";
-    supabase.from("notifications").insert({
-      user_id: recipientId,
-      type: "message",
-      title: `New message from ${senderName}`,
-      message: "You have a new message. Open the chat to read it.",
-      related_id: chatId,
+    // Send notification to the other user via server-validated SECURITY DEFINER RPC (Finding 1 fix)
+    // Server enforces chat membership and authenticates sender
+    supabase.rpc("send_chat_notification", {
+      p_chat_id: chatId,
+      p_preview_text: "You have a new message. Open the chat to read it.",
     }).then(() => {});
 
     setSending(false);

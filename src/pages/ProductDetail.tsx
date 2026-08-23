@@ -15,6 +15,7 @@ import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
 import { useTrustScore } from "@/hooks/useTrustScore";
 import { useWishlist } from "@/hooks/useWishlist";
+import { useSEO } from "@/hooks/useSEO";
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -35,6 +36,16 @@ const ProductDetail = () => {
 
   const { score: trustScore, badges: sellerBadges, isVerified } = useTrustScore(product?.seller_id);
   const { isWishlisted, toggleWishlist } = useWishlist();
+
+  // Finding 13: Route-level dynamic SEO metadata
+  useSEO({
+    title: product ? `${product.brand} ${product.name}` : "Product Details",
+    description: product
+      ? `Buy or swap ${product.brand} ${product.name} in ${product.area || "Chennai"}. Listed at ₹${product.selling_price}. Condition: ${product.condition}.`
+      : "View cosmetic product details on Swaptics.",
+    image: product?.images?.[0],
+    type: "product",
+  });
 
   useEffect(() => {
     if (!id) return;

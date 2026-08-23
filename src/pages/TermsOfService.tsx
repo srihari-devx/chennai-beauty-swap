@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useSEO } from "@/hooks/useSEO";
 import {
   ArrowLeft, ScrollText, Users, ShieldCheck, Package, AlertTriangle,
   CreditCard, Truck, Ban, Scale, Fingerprint, UserX, RefreshCw, Mail,
-  ClipboardList, Database, Share2, Lock, Clock, Cookie, UserCheck, Baby
+  ClipboardList, Database, Share2, Lock, Clock, Cookie, UserCheck, Baby,
+  MessageSquareWarning, Layers, Timer, FileText, HandHelping
 } from "lucide-react";
 
 interface LegalSection {
@@ -170,31 +172,96 @@ const privacySections: LegalSection[] = [
   },
 ];
 
+const grievanceSections: LegalSection[] = [
+  {
+    id: 1,
+    title: "How to File a Grievance",
+    icon: FileText,
+    content: `To help us investigate and resolve your issue efficiently, please ensure your complaint includes the following details:\n\n• Full Name & Contact Information (Email address and phone number linked to your account).\n• Account/Order/Transaction ID (if applicable).\n• Clear Description of the Issue: A concise explanation of the problem or grievance.\n• Supporting Documents/Evidence: Screenshots, receipts, URLs, or copies of relevant communication.\n• Desired Resolution: What outcome you are expecting (e.g., refund, content removal, technical fix).`,
+  },
+  {
+    id: 2,
+    title: "Level 1: Customer Support (First Point of Contact)",
+    icon: HandHelping,
+    content: `For general inquiries, operational issues, or technical glitches, reach out to our primary support team first.\n\n📧 Email: support@swaptics.com\n🕐 Operating Hours: Monday – Saturday, 9:00 AM – 6:00 PM IST\n⏱️ Expected Response Time: Within 24 to 48 hours.`,
+  },
+  {
+    id: 3,
+    title: "Level 2: Grievance Officer (Escalation)",
+    icon: Layers,
+    content: `If your complaint is not resolved within the specified timeline, or if you are dissatisfied with the response from Level 1, you may escalate the matter directly to our designated Grievance Officer.\n\n👤 Officer Name: Akash\n📋 Designation: Grievance Redressal Officer\n📧 Email: grievance@swaptics.com\n🕐 Operating Hours: Monday – Saturday, 9:00 AM – 6:00 PM IST`,
+  },
+  {
+    id: 4,
+    title: "Resolution Process & Timelines",
+    icon: Timer,
+    content: `Our resolution process follows a structured timeline:\n\n1. Acknowledgment — We will log your complaint and send an official acknowledgment with a Ticket / Reference ID within 24–48 hours.\n\n2. Investigation — Our internal review team investigates the matter and collects necessary facts within 3–7 business days.\n\n3. Final Resolution — A formal resolution or decision will be communicated to your registered email address within 15–30 business days.\n\n⚠️ Note: Complex issues requiring third-party intervention (e.g., external legal review) may take longer. In such cases, we will keep you updated on the progress.`,
+  },
+  {
+    id: 5,
+    title: "Specific Grievance Categories",
+    icon: ClipboardList,
+    content: `• Content / Copyright Violations: If you believe user-generated content violates your intellectual property, please specify the exact URL and attach proof of ownership.\n\n• Privacy & Data Protection: For concerns regarding how your personal data is collected, stored, or processed, mark your email subject line as \"Data Privacy Concern\".`,
+  },
+  {
+    id: 6,
+    title: "Important Guidelines for Users",
+    icon: MessageSquareWarning,
+    content: `• Keep your Ticket ID Handy: Always refer to your assigned ticket/case number in subsequent communications.\n\n• Avoid Duplicate Submissions: Submitting multiple tickets for the same issue may reset your queue position and delay the resolution.\n\n• Maintain Professionalism: Inappropriate, abusive, or threatening language will result in the suspension of support services and possible account review.`,
+  },
+];
+
 interface TermsOfServiceProps {
-  defaultTab?: "terms" | "privacy";
+  defaultTab?: "terms" | "privacy" | "grievance";
 }
 
 const TermsOfService = ({ defaultTab = "terms" }: TermsOfServiceProps) => {
-  const [activeTab, setActiveTab] = useState<"terms" | "privacy">(defaultTab);
+  const [activeTab, setActiveTab] = useState<"terms" | "privacy" | "grievance">(defaultTab);
   const navigate = useNavigate();
 
   useEffect(() => {
     setActiveTab(defaultTab);
   }, [defaultTab]);
 
-  const handleTabChange = (tab: "terms" | "privacy") => {
+  const handleTabChange = (tab: "terms" | "privacy" | "grievance") => {
     setActiveTab(tab);
-    navigate(tab === "terms" ? "/terms" : "/privacy");
+    const routes = { terms: "/terms", privacy: "/privacy", grievance: "/grievance" };
+    navigate(routes[tab]);
   };
 
-  const isTerms = activeTab === "terms";
-  const currentSections = isTerms ? termsSections : privacySections;
-  const title = isTerms ? "Terms of Service" : "Privacy Policy";
-  const subtitle = isTerms
-    ? "Please read these terms carefully before using Swaptics. By using our platform, you agree to these terms."
-    : "Your privacy matters to us. Learn how Swaptics collects, uses, and protects your personal information.";
-  const lastUpdated = isTerms ? "Last updated: April 2026" : "Last updated: June 2026";
-  const HeroIcon = isTerms ? ScrollText : ShieldCheck;
+  const currentSections =
+    activeTab === "terms" ? termsSections
+    : activeTab === "privacy" ? privacySections
+    : grievanceSections;
+
+  const titleMap = {
+    terms: "Terms of Service",
+    privacy: "Privacy Policy",
+    grievance: "Grievance Redressal",
+  };
+  const subtitleMap = {
+    terms: "Please read these terms carefully before using Swaptics. By using our platform, you agree to these terms.",
+    privacy: "Your privacy matters to us. Learn how Swaptics collects, uses, and protects your personal information.",
+    grievance: "At Swaptics, we are committed to resolving your concerns quickly and transparently. Follow the steps below to file and track your grievance.",
+  };
+  const title = titleMap[activeTab];
+  const subtitle = subtitleMap[activeTab];
+
+  // Finding 13: Dynamic SEO metadata for legal pages
+  useSEO({
+    title,
+    description: subtitle,
+    type: "website",
+  });
+
+  const lastUpdatedMap = {
+    terms: "Last updated: April 2026",
+    privacy: "Last updated: June 2026",
+    grievance: "Last updated: August 2026",
+  };
+  const heroIconMap = { terms: ScrollText, privacy: ShieldCheck, grievance: MessageSquareWarning };
+  const lastUpdated = lastUpdatedMap[activeTab];
+  const HeroIcon = heroIconMap[activeTab];
 
   return (
     <div className="min-h-screen bg-background">
@@ -227,28 +294,20 @@ const TermsOfService = ({ defaultTab = "terms" }: TermsOfServiceProps) => {
           {/* Tab Segmented Control */}
           <div className="flex justify-center mb-10">
             <div className="inline-flex p-1 bg-muted border border-border rounded-xl shadow-inner">
-              <button
-                type="button"
-                onClick={() => handleTabChange("terms")}
-                className={`px-6 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
-                  isTerms
-                    ? "bg-background text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Terms of Service
-              </button>
-              <button
-                type="button"
-                onClick={() => handleTabChange("privacy")}
-                className={`px-6 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
-                  !isTerms
-                    ? "bg-background text-primary shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Privacy Policy
-              </button>
+              {(["terms", "privacy", "grievance"] as const).map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => handleTabChange(tab)}
+                  className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+                    activeTab === tab
+                      ? "bg-background text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab === "terms" ? "Terms" : tab === "privacy" ? "Privacy" : "Grievance"}
+                </button>
+              ))}
             </div>
           </div>
 

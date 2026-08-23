@@ -9,7 +9,7 @@ import {
 import {
   Users, Package, CheckCircle, TrendingUp, ShieldAlert,
   Clock, Trophy, UserPlus, Trash2, Activity, Newspaper, Plus, Edit, Eye, EyeOff,
-  Star, Mail, MessageSquare, Copy, Send
+  Star, Mail, MessageSquare, Copy, Send, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
@@ -74,6 +74,9 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins" | "articles" | "newsletter" | "feedback">("overview");
   const [loading, setLoading] = useState(true);
   const [managingUserId, setManagingUserId] = useState<string | null>(null);
+  const [userPage, setUserPage] = useState(1);
+  const [productPage, setProductPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Articles state
   const [articlesList, setArticlesList] = useState<ArticleRow[]>([]);
@@ -234,8 +237,16 @@ const Admin = () => {
   const _doDeleteUser = async (userId: string) => {
     setManagingUserId(userId);
     try {
-      // H-3 Fix: Use atomic database RPC for cascade deletion
-      // Runs in a single transaction — if any step fails, everything rolls back
+      // Finding 4 Fix: Service-role storage cleanup via Edge Function
+      try {
+        await supabase.functions.invoke("cleanup-user-storage", {
+          body: { userId },
+        });
+      } catch (storageErr) {
+        console.warn("Storage cleanup notice:", storageErr);
+      }
+
+      // Findings 4 & 9 Fix: Atomic database RPC for cascade deletion with immutable audit log
       const { data, error } = await supabase.rpc("admin_delete_user_cascade", {
         target_user_id: userId,
       });
@@ -250,22 +261,9 @@ const Admin = () => {
         return;
       }
 
-      // Best-effort storage cleanup (RPC can't access Supabase Storage)
-      try {
-        const { data: files } = await supabase.storage
-          .from("product-images")
-          .list(userId);
-        if (files && files.length > 0) {
-          const filePaths = files.map((f) => `${userId}/${f.name}`);
-          await supabase.storage.from("product-images").remove(filePaths);
-        }
-      } catch {
-        // Storage cleanup is best-effort — don't fail the operation
-      }
-
       setUsers(u => u.filter(user => user.user_id !== userId));
       setStats(s => ({ ...s, users: s.users - 1 }));
-      toast.success("User and all their data deleted successfully");
+      toast.success("User, storage files, and all associated data deleted successfully");
     } catch {
       toast.error("Failed to delete user. Please try again.");
     } finally {
@@ -670,85 +668,145 @@ const Admin = () => {
             )}
 
             {activeTab === "users" && (
-              <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 border-b border-border">
-                      <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Area</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {users.map((u) => (
-                        <tr key={u.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3 font-medium text-foreground">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
-                                {u.full_name?.[0]?.toUpperCase()}
-                              </div>
-                              {u.full_name}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">{u.area}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString("en-IN")}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-end">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteUser(u.user_id)}
-                                disabled={managingUserId === u.user_id}
-                                className="h-7 px-2.5 text-xs rounded-lg gap-1"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                {managingUserId === u.user_id ? "Deleting..." : "Delete"}
-                              </Button>
-                            </div>
-                          </td>
+              <div className="space-y-3">
+                <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 border-b border-border">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Area</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
+                          <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {users.slice((userPage - 1) * PAGE_SIZE, userPage * PAGE_SIZE).map((u) => (
+                          <tr key={u.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3 font-medium text-foreground">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold">
+                                  {u.full_name?.[0]?.toUpperCase()}
+                                </div>
+                                {u.full_name}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-muted-foreground">{u.area}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString("en-IN")}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteUser(u.user_id)}
+                                  disabled={managingUserId === u.user_id}
+                                  className="h-7 px-2.5 text-xs rounded-lg gap-1"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  {managingUserId === u.user_id ? "Deleting..." : "Delete"}
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+                {users.length > PAGE_SIZE && (
+                  <div className="flex items-center justify-between px-2 text-xs text-muted-foreground">
+                    <span>
+                      Showing {((userPage - 1) * PAGE_SIZE) + 1}–{Math.min(userPage * PAGE_SIZE, users.length)} of {users.length} users
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setUserPage(p => Math.max(1, p - 1))}
+                        disabled={userPage === 1}
+                        className="h-7 px-2"
+                      >
+                        <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+                      </Button>
+                      <span>Page {userPage} of {Math.ceil(users.length / PAGE_SIZE) || 1}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setUserPage(p => Math.min(Math.ceil(users.length / PAGE_SIZE), p + 1))}
+                        disabled={userPage >= Math.ceil(users.length / PAGE_SIZE)}
+                        className="h-7 px-2"
+                      >
+                        Next <ChevronRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "products" && (
-              <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 border-b border-border">
-                      <tr>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Product</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Price</th>
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                        <th className="px-4 py-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {products.map((p) => (
-                        <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-foreground">{p.brand} {p.name}</p>
-                            <p className="text-xs text-muted-foreground">{p.area}</p>
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-primary">₹{p.selling_price}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${p.is_sold ? "bg-muted text-muted-foreground" : "bg-emerald-100 text-emerald-700"}`}>
-                              {p.is_sold ? "Sold" : "Active"}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Button size="sm" variant="destructive" onClick={() => deleteProduct(p.id)} className="h-7 px-2 text-xs rounded-lg">Delete</Button>
-                          </td>
+              <div className="space-y-3">
+                <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50 border-b border-border">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Product</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Price</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                          <th className="px-4 py-3"></th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {products.slice((productPage - 1) * PAGE_SIZE, productPage * PAGE_SIZE).map((p) => (
+                          <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-foreground">{p.brand} {p.name}</p>
+                              <p className="text-xs text-muted-foreground">{p.area}</p>
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-primary">₹{p.selling_price}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${p.is_sold ? "bg-muted text-muted-foreground" : "bg-emerald-100 text-emerald-700"}`}>
+                                {p.is_sold ? "Sold" : "Active"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Button size="sm" variant="destructive" onClick={() => deleteProduct(p.id)} className="h-7 px-2 text-xs rounded-lg">Delete</Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+                {products.length > PAGE_SIZE && (
+                  <div className="flex items-center justify-between px-2 text-xs text-muted-foreground">
+                    <span>
+                      Showing {((productPage - 1) * PAGE_SIZE) + 1}–{Math.min(productPage * PAGE_SIZE, products.length)} of {products.length} products
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setProductPage(p => Math.max(1, p - 1))}
+                        disabled={productPage === 1}
+                        className="h-7 px-2"
+                      >
+                        <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+                      </Button>
+                      <span>Page {productPage} of {Math.ceil(products.length / PAGE_SIZE) || 1}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setProductPage(p => Math.min(Math.ceil(products.length / PAGE_SIZE), p + 1))}
+                        disabled={productPage >= Math.ceil(products.length / PAGE_SIZE)}
+                        className="h-7 px-2"
+                      >
+                        Next <ChevronRight className="w-3 h-3 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
