@@ -99,7 +99,7 @@ const termsSections: LegalSection[] = [
     id: 14,
     title: "Contact Information",
     icon: Mail,
-    content: `For questions or concerns regarding these Terms, please contact us at:\n\nswaptics.beauty.store@gmail.com`,
+    content: `For questions or concerns regarding these Terms, please contact us at:\n\nsupport@swaptics.in`,
   },
 ];
 
@@ -150,7 +150,7 @@ const privacySections: LegalSection[] = [
     id: 8,
     title: "Your Rights",
     icon: UserCheck,
-    content: `You have the right to:\n\n• Access your personal data\n• Update or correct information\n• Request account deletion\n• Opt out of marketing communications\n\nTo exercise these rights, contact us at:\n📧 swaptics.beauty.store@gmail.com`,
+    content: `You have the right to:\n\n• Access your personal data\n• Update or correct information\n• Request account deletion\n• Opt out of marketing communications\n\nTo exercise these rights, contact us at:\n📧 support@swaptics.in`,
   },
   {
     id: 9,
@@ -168,7 +168,7 @@ const privacySections: LegalSection[] = [
     id: 11,
     title: "Contact Us",
     icon: Mail,
-    content: `If you have any questions, contact us:\n\n📧 Email: swaptics.beauty.store@gmail.com`,
+    content: `If you have any questions, contact us:\n\n📧 Email: support@swaptics.in`,
   },
 ];
 

@@ -66,10 +66,10 @@ export const useSEO = ({ title, description, image, url, type = "article" }: SEO
     // Cleanup/Restore to original static defaults from index.html
     return () => {
       document.title = originalTitle;
-      const defaultDesc = "Rescue Beauty Products. Save Money. Reduce Waste. India's hyperlocal marketplace to buy, sell, and swap unused cosmetics. Connect with beauty lovers in your area — no payments, no delivery hassle.";
+      const defaultDesc = "It didn't suit you. But it's perfect for someone nearby. India's hyperlocal marketplace to buy, sell, and swap unused beauty products. Connect with people in your own city. no payments, no delivery hassle.";
       setMetaTag("name", "description", defaultDesc);
       setMetaTag("property", "og:title", "Swaptics");
-      setMetaTag("property", "og:description", "Rescue Beauty Products. Save Money. Reduce Waste.");
+      setMetaTag("property", "og:description", "It didn't suit you. But it's perfect for someone nearby.");
       setMetaTag("property", "og:type", "website");
       
       // Attempt to clean up or at least restore OG image to standard favicon or fallback if wanted

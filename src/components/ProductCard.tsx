@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { MapPin, MessageCircle } from "lucide-react";
+import { MapPin, MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ConditionBadge from "@/components/ConditionBadge";
 import VerifiedBadge from "@/components/VerifiedBadge";
@@ -29,14 +29,16 @@ interface ProductCardProps {
   isWishlisted?: boolean;
   onToggleWishlist?: (productId: string) => void;
   sellerVerified?: boolean;
+  sellerBadges?: string[];
 }
 
-const ProductCard = ({ product, showChatButton = true, isWishlisted = false, onToggleWishlist, sellerVerified }: ProductCardProps) => {
+const ProductCard = ({ product, showChatButton = true, isWishlisted = false, onToggleWishlist, sellerVerified, sellerBadges = [] }: ProductCardProps) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const categoryInfo = PRODUCT_CATEGORIES.find(c => c.value === product.category);
   const imageUrl = product.images?.[0];
   const isPriceReduced = !!product.price_reduced_at;
+  const isInfluencer = sellerBadges.includes("influencer");
 
   const handleChat = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -95,6 +97,14 @@ const ProductCard = ({ product, showChatButton = true, isWishlisted = false, onT
                 isWishlisted={isWishlisted}
                 onToggle={onToggleWishlist}
               />
+            </div>
+          )}
+          {/* Influencer banner */}
+          {isInfluencer && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-pink-500 via-fuchsia-500 to-purple-500 px-3 py-1.5 flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-white" />
+              <span className="text-white text-[11px] font-bold tracking-wide uppercase">Influencer</span>
+              <Sparkles className="w-3 h-3 text-white" />
             </div>
           )}
         </div>

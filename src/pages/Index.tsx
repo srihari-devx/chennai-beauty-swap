@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, ChevronDown, Mail, Newspaper, Calendar, Tag } from "lucide-react";
+import { ArrowRight, MessageCircle, MapPin, Shield, Sparkles, ChevronRight, ChevronDown, Mail, Newspaper, Calendar, Tag, Instagram } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { cleanImageUrl } from "@/lib/utils";
 import { useEffect, useState, useCallback } from "react";
@@ -142,12 +142,14 @@ const ProductCarousel = ({
   api,
   isWishlisted,
   toggleWishlist,
+  badgeMap = {},
 }: {
   products: any[];
   setApi: (api: CarouselApi) => void;
   api: CarouselApi | undefined;
   isWishlisted: (id: string) => boolean;
   toggleWishlist: (id: string) => Promise<boolean>;
+  badgeMap?: Record<string, string[]>;
 }) => (
   <div>
     <Carousel
@@ -165,6 +167,7 @@ const ProductCarousel = ({
               product={product}
               isWishlisted={isWishlisted(product.id)}
               onToggleWishlist={toggleWishlist}
+              sellerBadges={badgeMap[product.seller_id] || []}
             />
           </CarouselItem>
         ))}
@@ -183,7 +186,7 @@ const Index = () => {
 
   useSEO({
     title: "Swaptics | Buy & Sell Unused & Gently Used Cosmetics in India",
-    description: "India's hyperlocal marketplace to buy, sell, and swap unused & gently used cosmetics. Connect with beauty lovers in your neighborhood — safe, affordable, zero delivery hassle.",
+    description: "India's hyperlocal marketplace to buy, sell, and swap unused & gently used beauty products. Connect with people in your own city. no payments, no delivery hassle.",
     type: "website",
   });
 
@@ -192,6 +195,7 @@ const Index = () => {
   const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
   const [latestArticles, setLatestArticles] = useState<Article[]>([]);
   const [showEmail, setShowEmail] = useState(false);
+  const [sellerBadgeMap, setSellerBadgeMap] = useState<Record<string, string[]>>({});
 
   /* Carousel APIs for dots */
   const [trendingApi, setTrendingApi] = useState<CarouselApi>();
@@ -282,6 +286,26 @@ const Index = () => {
     fetchArticles();
   }, []);
 
+  // Fetch seller badges for all displayed products
+  useEffect(() => {
+    const allProducts = [...recentProducts, ...nearbyProducts, ...trendingProducts];
+    if (allProducts.length === 0) return;
+    const uniqueSellerIds = [...new Set(allProducts.map(p => p.seller_id))];
+    const fetchBadges = async () => {
+      const { data } = await (supabase as any)
+        .from("seller_badges")
+        .select("user_id, badge_type")
+        .in("user_id", uniqueSellerIds);
+      const map: Record<string, string[]> = {};
+      (data || []).forEach((b: any) => {
+        if (!map[b.user_id]) map[b.user_id] = [];
+        map[b.user_id].push(b.badge_type);
+      });
+      setSellerBadgeMap(map);
+    };
+    fetchBadges();
+  }, [recentProducts, nearbyProducts, trendingProducts]);
+
   return (
     <div className="min-h-screen">
       {/* HERO */}
@@ -319,13 +343,13 @@ const Index = () => {
             </div>
           )}
           <h1 className="font-display text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
-            Rescue Beauty Products.{" "}
-            <span className="text-gradient">Save Money.</span>{" "}
-            Reduce Waste.
+            It didn't suit you.{" "}
+            <span className="text-gradient">But it's perfect</span>{" "}
+            for someone nearby.
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed">
-            India's hyperlocal marketplace to buy, sell, and swap unused & gently used cosmetics.
-            Connect with beauty lovers in your area — no payments, no delivery hassle.
+            India's hyperlocal marketplace to buy, sell, and swap unused & gently used beauty products.
+            Connect with people in your own city. no payments, no delivery hassle.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="lg" asChild className="gradient-cta border-0 text-primary-foreground shadow-beauty px-8 rounded-xl">
@@ -373,6 +397,49 @@ const Index = () => {
         </div>
       </section>
 
+      {/* INSTAGRAM BANNER */}
+      <section className="py-4 px-4">
+        <div className="container max-w-5xl mx-auto">
+          <a
+            href="https://instagram.com/swaptics.beauty"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative flex items-center justify-between gap-4 px-6 md:px-8 py-4 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.01] hover:shadow-lg"
+            style={{
+              background: "linear-gradient(135deg, #833ab4 0%, #fd1d1d 50%, #fcb045 100%)",
+            }}
+          >
+            {/* Animated sparkle decorations */}
+            <div className="absolute top-2 left-8 w-2 h-2 bg-white/30 rounded-full animate-pulse" />
+            <div className="absolute bottom-3 left-1/3 w-1.5 h-1.5 bg-white/20 rounded-full animate-pulse" style={{ animationDelay: "0.5s" }} />
+            <div className="absolute top-3 right-1/4 w-1 h-1 bg-white/25 rounded-full animate-pulse" style={{ animationDelay: "1s" }} />
+
+            {/* Left: Instagram icon + text */}
+            <div className="flex items-center gap-3 md:gap-4 min-w-0">
+              <div className="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors duration-300">
+                <Instagram className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-white font-semibold text-sm md:text-base truncate">
+                  Follow us on Instagram
+                </p>
+                <p className="text-white/70 text-xs md:text-sm truncate">
+                  @swaptics.beauty — Tips, drops & beauty community
+                </p>
+              </div>
+            </div>
+
+            {/* Right: Follow button */}
+            <div className="flex-shrink-0">
+              <span className="inline-flex items-center gap-1.5 bg-white text-gray-900 font-semibold text-xs md:text-sm px-4 md:px-5 py-2 md:py-2.5 rounded-xl shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300">
+                Follow Our Page
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </div>
+          </a>
+        </div>
+      </section>
+
       {/* BROWSE CATEGORIES */}
       <section className="py-16 px-4 gradient-hero">
         <div className="container max-w-5xl mx-auto">
@@ -413,7 +480,7 @@ const Index = () => {
                 <Link to={`/browse?area=${profile?.area}`}>See All <ChevronRight className="w-4 h-4" /></Link>
               </Button>
             </div>
-            <ProductCarousel products={nearbyProducts} setApi={setNearbyApi} api={nearbyApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} />
+            <ProductCarousel products={nearbyProducts} setApi={setNearbyApi} api={nearbyApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} badgeMap={sellerBadgeMap} />
           </div>
         </section>
       )}
@@ -431,7 +498,7 @@ const Index = () => {
                 <Link to="/browse">See All <ChevronRight className="w-4 h-4" /></Link>
               </Button>
             </div>
-            <ProductCarousel products={trendingProducts} setApi={setTrendingApi} api={trendingApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} />
+            <ProductCarousel products={trendingProducts} setApi={setTrendingApi} api={trendingApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} badgeMap={sellerBadgeMap} />
           </div>
         </section>
       )}
@@ -449,7 +516,7 @@ const Index = () => {
             </Button>
           </div>
           {recentProducts.length > 0 ? (
-            <ProductCarousel products={recentProducts} setApi={setRecentApi} api={recentApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} />
+            <ProductCarousel products={recentProducts} setApi={setRecentApi} api={recentApi} isWishlisted={isWishlisted} toggleWishlist={toggleWishlist} badgeMap={sellerBadgeMap} />
           ) : (
             <div className="text-center py-16 bg-background rounded-2xl border border-dashed border-border">
               <div className="text-4xl mb-3">✨</div>

@@ -9,7 +9,7 @@ import {
 import {
   Users, Package, CheckCircle, TrendingUp, ShieldAlert,
   Clock, Trophy, UserPlus, Trash2, Activity, Newspaper, Plus, Edit, Eye, EyeOff,
-  Star, Mail, MessageSquare, Copy, Send, ChevronLeft, ChevronRight
+  Star, Mail, MessageSquare, Copy, Send, ChevronLeft, ChevronRight, Sparkles
 } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
@@ -74,6 +74,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins" | "articles" | "newsletter" | "feedback">("overview");
   const [loading, setLoading] = useState(true);
   const [managingUserId, setManagingUserId] = useState<string | null>(null);
+  const [userBadges, setUserBadges] = useState<Record<string, string[]>>({});
   const [userPage, setUserPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -183,6 +184,15 @@ const Admin = () => {
         return { name: profile?.full_name || "Unknown", sales, userId };
       });
     setLeaderboard(topSellers);
+
+    // Fetch user badges
+    const { data: allBadges } = await (supabase as any).from("seller_badges").select("user_id, badge_type");
+    const badgeMap: Record<string, string[]> = {};
+    (allBadges || []).forEach((b: any) => {
+      if (!badgeMap[b.user_id]) badgeMap[b.user_id] = [];
+      badgeMap[b.user_id].push(b.badge_type);
+    });
+    setUserBadges(badgeMap);
 
     setUsers(allProfiles);
     setProducts(allProducts);
@@ -348,6 +358,45 @@ const Admin = () => {
       cancel: { label: "Cancel", onClick: () => {} },
       duration: 6000,
     });
+  };
+
+  const toggleInfluencerBadge = async (userId: string) => {
+    const currentBadges = userBadges[userId] || [];
+    const hasInfluencer = currentBadges.includes("influencer");
+
+    if (hasInfluencer) {
+      // Revoke
+      const { error } = await (supabase as any)
+        .from("seller_badges")
+        .delete()
+        .eq("user_id", userId)
+        .eq("badge_type", "influencer");
+      if (error) {
+        toast.error("Failed to revoke badge");
+        return;
+      }
+      setUserBadges(prev => {
+        const updated = { ...prev };
+        updated[userId] = (updated[userId] || []).filter(b => b !== "influencer");
+        return updated;
+      });
+      toast.success("Influencer badge revoked");
+    } else {
+      // Grant
+      const { error } = await (supabase as any)
+        .from("seller_badges")
+        .insert({ user_id: userId, badge_type: "influencer" });
+      if (error) {
+        toast.error("Failed to grant badge: " + (error.message || ""));
+        return;
+      }
+      setUserBadges(prev => {
+        const updated = { ...prev };
+        updated[userId] = [...(updated[userId] || []), "influencer"];
+        return updated;
+      });
+      toast.success("Influencer badge granted! ✨");
+    }
   };
 
   const statCards = [
@@ -676,6 +725,7 @@ const Admin = () => {
                         <tr>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Area</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Badge</th>
                           <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Joined</th>
                           <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</th>
                         </tr>
@@ -692,6 +742,20 @@ const Admin = () => {
                               </div>
                             </td>
                             <td className="px-4 py-3 text-muted-foreground">{u.area}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => toggleInfluencerBadge(u.user_id)}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-200 ${
+                                  (userBadges[u.user_id] || []).includes("influencer")
+                                    ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-sm hover:shadow-md"
+                                    : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border"
+                                }`}
+                                title={(userBadges[u.user_id] || []).includes("influencer") ? "Revoke Influencer badge" : "Grant Influencer badge"}
+                              >
+                                <Sparkles className="w-3 h-3" />
+                                {(userBadges[u.user_id] || []).includes("influencer") ? "Influencer" : "Grant"}
+                              </button>
+                            </td>
                             <td className="px-4 py-3 text-muted-foreground">{new Date(u.created_at).toLocaleDateString("en-IN")}</td>
                             <td className="px-4 py-3">
                               <div className="flex justify-end">

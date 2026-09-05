@@ -21,6 +21,7 @@ const Browse = () => {
   const [area, setArea] = useState("");
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [showFilters, setShowFilters] = useState(false);
+  const [sellerBadgeMap, setSellerBadgeMap] = useState<Record<string, string[]>>({});
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Finding 13: Dynamic SEO metadata based on filter
@@ -75,6 +76,22 @@ const Browse = () => {
     }
 
     setLoading(false);
+
+    // Batch-fetch seller badges
+    const allFetched = [...results, ...(results.length > 0 ? [] : [])];
+    const sellerIds = [...new Set(results.map((p: any) => p.seller_id))];
+    if (sellerIds.length > 0) {
+      const { data: badgesData } = await (supabase as any)
+        .from("seller_badges")
+        .select("user_id, badge_type")
+        .in("user_id", sellerIds);
+      const map: Record<string, string[]> = {};
+      (badgesData || []).forEach((b: any) => {
+        if (!map[b.user_id]) map[b.user_id] = [];
+        map[b.user_id].push(b.badge_type);
+      });
+      setSellerBadgeMap(map);
+    }
   }, [search, category, condition, area, priceRange]);
 
   const fetchRecommendations = async (matchedProducts: any[], searchTerm: string) => {
@@ -330,7 +347,7 @@ const Browse = () => {
             <>
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  <ProductCard key={product.id} product={product} sellerBadges={sellerBadgeMap[product.seller_id] || []} />
                 ))}
               </div>
 
@@ -343,7 +360,7 @@ const Browse = () => {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recommendations.map((product) => (
-                      <ProductCard key={product.id} product={product} />
+                      <ProductCard key={product.id} product={product} sellerBadges={sellerBadgeMap[product.seller_id] || []} />
                     ))}
                   </div>
                 </div>
@@ -371,7 +388,7 @@ const Browse = () => {
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {recommendations.map((product) => (
-                      <ProductCard key={product.id} product={product} />
+                      <ProductCard key={product.id} product={product} sellerBadges={sellerBadgeMap[product.seller_id] || []} />
                     ))}
                   </div>
                 </div>

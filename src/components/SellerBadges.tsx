@@ -1,7 +1,8 @@
-import { Award, Zap, ShieldCheck, Trophy } from "lucide-react";
+import { Award, Zap, ShieldCheck, Trophy, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const BADGE_CONFIG: Record<string, { label: string; icon: any; color: string; bg: string }> = {
+  influencer: { label: "Influencer", icon: Sparkles, color: "text-pink-600", bg: "bg-pink-50" },
   first_sale: { label: "First Sale", icon: Award, color: "text-amber-600", bg: "bg-amber-50" },
   five_sales: { label: "5 Sales", icon: Trophy, color: "text-purple-600", bg: "bg-purple-50" },
   trusted_seller: { label: "Trusted Seller", icon: ShieldCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
