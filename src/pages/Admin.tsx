@@ -9,7 +9,8 @@ import {
 import {
   Users, Package, CheckCircle, TrendingUp, ShieldAlert,
   Clock, Trophy, UserPlus, Trash2, Activity, Newspaper, Plus, Edit, Eye, EyeOff,
-  Star, Mail, MessageSquare, Copy, Send, ChevronLeft, ChevronRight, Sparkles
+  Star, Mail, MessageSquare, Copy, Send, ChevronLeft, ChevronRight, Sparkles,
+  Link2, CircleDot
 } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
@@ -71,7 +72,7 @@ const Admin = () => {
   const [admins, setAdmins] = useState<any[]>([]);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [addingAdmin, setAddingAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins" | "articles" | "newsletter" | "feedback">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "analytics" | "users" | "products" | "reports" | "admins" | "influencers" | "articles" | "newsletter" | "feedback">("overview");
   const [loading, setLoading] = useState(true);
   const [managingUserId, setManagingUserId] = useState<string | null>(null);
   const [userBadges, setUserBadges] = useState<Record<string, string[]>>({});
@@ -94,6 +95,12 @@ const Admin = () => {
   // Feedback state
   const [feedbackList, setFeedbackList] = useState<FeedbackRow[]>([]);
   const [feedbackFilter, setFeedbackFilter] = useState<string>("all");
+
+  // Influencer state
+  const [influencersList, setInfluencersList] = useState<any[]>([]);
+  const [newInfluencerEmail, setNewInfluencerEmail] = useState("");
+  const [newInfluencerName, setNewInfluencerName] = useState("");
+  const [addingInfluencer, setAddingInfluencer] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) { navigate("/"); return; }
@@ -225,6 +232,18 @@ const Admin = () => {
       .select("*")
       .order("created_at", { ascending: false });
     setFeedbackList((fbData as FeedbackRow[]) || []);
+
+    // Influencers
+    const { data: influencersData } = await supabase
+      .from("influencers")
+      .select("*")
+      .order("created_at", { ascending: false });
+    // Map influencers with profile data
+    const influencersWithProfiles = (influencersData || []).map((inf: any) => {
+      const profile = allProfiles.find(p => p.user_id === inf.user_id);
+      return { ...inf, profile };
+    });
+    setInfluencersList(influencersWithProfiles);
 
     setLoading(false);
   };
@@ -399,6 +418,78 @@ const Admin = () => {
     }
   };
 
+  // ─── Influencer management handlers ───
+  const addInfluencer = async () => {
+    if (!newInfluencerEmail.trim()) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newInfluencerEmail.trim())) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    setAddingInfluencer(true);
+    try {
+      const res = await supabase.functions.invoke("setup-influencer", {
+        body: {
+          email: newInfluencerEmail.trim(),
+          name: newInfluencerName.trim() || undefined,
+        },
+      });
+
+      if (res.error) {
+        let serverMsg = "";
+        try {
+          if (res.data?.error) serverMsg = res.data.error;
+          else if (res.error.message) serverMsg = res.error.message;
+        } catch {
+          serverMsg = res.error.message || "Unknown error";
+        }
+        toast.error(serverMsg || "Failed to add influencer.");
+      } else if (res.data?.error) {
+        toast.error(res.data.error);
+      } else {
+        toast.success(`Influencer created: ${res.data?.influencer?.name || newInfluencerEmail}`);
+        setNewInfluencerEmail("");
+        setNewInfluencerName("");
+        fetchData();
+      }
+    } catch (err: any) {
+      toast.error(`Unexpected error: ${err.message || "Please try again."}`);
+    }
+    setAddingInfluencer(false);
+  };
+
+  const toggleInfluencerStatus = async (influencerId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
+    const { error } = await supabase
+      .from("influencers")
+      .update({ status: newStatus })
+      .eq("id", influencerId);
+    if (error) {
+      toast.error("Failed to update status");
+      return;
+    }
+    setInfluencersList(prev =>
+      prev.map(inf => inf.id === influencerId ? { ...inf, status: newStatus } : inf)
+    );
+    toast.success(`Influencer ${newStatus === "active" ? "activated" : "deactivated"}`);
+  };
+
+  const removeInfluencer = async (influencerId: string) => {
+    toast("Remove this influencer? Their referral data will be deleted.", {
+      action: { label: "Remove", onClick: async () => {
+        const { error } = await supabase.from("influencers").delete().eq("id", influencerId);
+        if (!error) {
+          setInfluencersList(prev => prev.filter(inf => inf.id !== influencerId));
+          toast.success("Influencer removed");
+        } else {
+          toast.error("Failed to remove influencer");
+        }
+      }},
+      cancel: { label: "Cancel", onClick: () => {} },
+      duration: 6000,
+    });
+  };
+
   const statCards = [
     { label: "Total Users", value: stats.users, icon: Users, color: "text-primary" },
     { label: "Total Listings", value: stats.listings, icon: Package, color: "text-blue-500" },
@@ -406,7 +497,7 @@ const Admin = () => {
     { label: "Avg Time to Sell", value: avgTimeToSell, icon: Clock, color: "text-amber-500" },
   ];
 
-  const tabs = ["overview", "analytics", "users", "products", "reports", "admins", "articles", "newsletter", "feedback"] as const;
+  const tabs = ["overview", "analytics", "users", "products", "reports", "admins", "influencers", "articles", "newsletter", "feedback"] as const;
 
   const ARTICLE_CATEGORIES = [
     { value: "general", label: "General" },
@@ -947,6 +1038,93 @@ const Admin = () => {
                     ))}
                     {admins.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">No admins found</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ─── INFLUENCERS TAB ─── */}
+            {activeTab === "influencers" && (
+              <div className="space-y-6">
+                {/* Add Influencer */}
+                <div className="bg-card rounded-2xl border border-border shadow-card p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Link2 className="w-4 h-4 text-primary" />
+                    <h3 className="font-semibold text-foreground">Add New Influencer</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Enter the email of an existing user to make them an influencer. A referral link and slug will be auto-generated.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      type="email"
+                      placeholder="user@example.com"
+                      value={newInfluencerEmail}
+                      onChange={e => setNewInfluencerEmail(e.target.value)}
+                      className="max-w-sm"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Display name (optional)"
+                      value={newInfluencerName}
+                      onChange={e => setNewInfluencerName(e.target.value)}
+                      className="max-w-xs"
+                    />
+                    <Button onClick={addInfluencer} disabled={addingInfluencer || !newInfluencerEmail.trim()} className="gradient-cta text-primary-foreground border-0">
+                      {addingInfluencer ? "Adding..." : "Add Influencer"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Current Influencers */}
+                <div className="bg-card rounded-2xl border border-border shadow-card p-5">
+                  <h3 className="font-semibold text-foreground mb-4">Current Influencers ({influencersList.length})</h3>
+                  <div className="space-y-3">
+                    {influencersList.map(inf => (
+                      <div key={inf.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-muted/30">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {inf.name?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-foreground truncate">{inf.name}</p>
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                                inf.status === "active"
+                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                              }`}>
+                                <CircleDot className="w-2.5 h-2.5" />
+                                {inf.status === "active" ? "Active" : "Inactive"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              /i/{inf.slug} · {inf.profile?.full_name || "No profile"} · {inf.profile?.area || ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => toggleInfluencerStatus(inf.id, inf.status)}
+                            className={`h-8 text-xs ${
+                              inf.status === "active"
+                                ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            }`}
+                          >
+                            {inf.status === "active" ? "Deactivate" : "Activate"}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => removeInfluencer(inf.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {influencersList.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-4">No influencers added yet</p>
                     )}
                   </div>
                 </div>
