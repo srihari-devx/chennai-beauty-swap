@@ -2,6 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = [
   Deno.env.get("ALLOWED_ORIGIN"),
+  'https://www.swaptics.in',
+  'https://swaptics.in',
   'https://swaptics.vercel.app',
   'http://localhost:5173',
   'http://localhost:8080',
