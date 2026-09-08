@@ -46,6 +46,36 @@ export type Database = {
           },
         ]
       }
+      influencers: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          slug: string
+          referral_code: string
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          slug: string
+          referral_code: string
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          slug?: string
+          referral_code?: string
+          status?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           chat_id: string
@@ -300,6 +330,38 @@ export type Database = {
           seller_id?: string
         }
         Relationships: []
+      }
+      referral_clicks: {
+        Row: {
+          id: string
+          influencer_id: string
+          clicked_at: string
+          referral_source: string
+          user_agent: string | null
+        }
+        Insert: {
+          id?: string
+          influencer_id: string
+          clicked_at?: string
+          referral_source?: string
+          user_agent?: string | null
+        }
+        Update: {
+          id?: string
+          influencer_id?: string
+          clicked_at?: string
+          referral_source?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_clicks_influencer_id_fkey"
+            columns: ["influencer_id"]
+            isOneToOne: false
+            referencedRelation: "influencers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seller_badges: {
         Row: {

@@ -1,15 +1,28 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, MessageCircle, User, LogOut, LayoutDashboard, Menu, X, Newspaper } from "lucide-react";
-import { useState } from "react";
+import { ShoppingBag, Plus, MessageCircle, User, LogOut, LayoutDashboard, Menu, X, Newspaper, Link2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import NotificationBell from "@/components/NotificationBell";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isInfluencer, setIsInfluencer] = useState(false);
+
+  // Lightweight check: does this user have an influencer record?
+  useEffect(() => {
+    if (!user) { setIsInfluencer(false); return; }
+    supabase
+      .from("influencers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => setIsInfluencer(!!data));
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -74,6 +87,16 @@ const Navbar = () => {
               >
                 Dashboard
               </Link>
+              {isInfluencer && (
+                <Link
+                  to="/influencer"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/influencer") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Influencer
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   to="/cbs-admin"
@@ -168,6 +191,11 @@ const Navbar = () => {
               <Link to="/dashboard" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                 <User className="w-4 h-4" /> Dashboard
               </Link>
+              {isInfluencer && (
+                <Link to="/influencer" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  <Link2 className="w-4 h-4" /> Influencer
+                </Link>
+              )}
               {isAdmin && (
                 <Link to="/cbs-admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <LayoutDashboard className="w-4 h-4" /> Admin

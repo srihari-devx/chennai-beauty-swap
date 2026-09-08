@@ -23,6 +23,8 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const Articles = lazy(() => import("./pages/Articles"));
 const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
+const ReferralRedirect = lazy(() => import("./pages/ReferralRedirect"));
+const InfluencerDashboard = lazy(() => import("./pages/InfluencerDashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 /* Loading fallback for route transitions */
@@ -91,6 +93,12 @@ const App = () => (
                     <Route path="/grievance" element={<TermsOfService defaultTab="grievance" />} />
                     <Route path="/articles" element={<Articles />} />
                     <Route path="/articles/:id" element={<ArticleDetail />} />
+                    <Route path="/i/:slug" element={<ReferralRedirect />} />
+                    <Route path="/influencer" element={
+                      <ProtectedRoute>
+                        <InfluencerDashboard />
+                      </ProtectedRoute>
+                    } />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
