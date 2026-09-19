@@ -1,3 +1,4 @@
+// @ts-nocheck — This file runs in Supabase's Deno runtime, not Node/Vite
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = [
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
   let body: any;
   try {
     body = await req.json();
-  } catch {
+  } catch (_e) {
     return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

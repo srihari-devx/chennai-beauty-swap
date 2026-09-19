@@ -22,6 +22,7 @@ const Browse = () => {
   const [priceRange, setPriceRange] = useState([0, 5000]);
   const [showFilters, setShowFilters] = useState(false);
   const [sellerBadgeMap, setSellerBadgeMap] = useState<Record<string, string[]>>({});
+  const [influencerIds, setInfluencerIds] = useState<Set<string>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Finding 13: Dynamic SEO metadata based on filter
@@ -31,6 +32,28 @@ const Browse = () => {
     description: `Explore unused skincare, makeup, haircare, and fragrances from trusted beauty community members. Filter by brand, condition, price, and location.`,
     type: "website",
   });
+
+  // Fetch influencer user_ids on mount for priority sorting
+  useEffect(() => {
+    const fetchInfluencerIds = async () => {
+      const { data } = await supabase
+        .from("influencers")
+        .select("user_id")
+        .eq("status", "active");
+      if (data) {
+        setInfluencerIds(new Set(data.map((d: any) => d.user_id)));
+      }
+    };
+    fetchInfluencerIds();
+  }, []);
+
+  // Sort helper: influencer-owned products first, then the rest (preserving original order within each group)
+  const sortWithInfluencerPriority = useCallback((items: any[]) => {
+    if (influencerIds.size === 0) return items;
+    const influencerProducts = items.filter(p => influencerIds.has(p.seller_id));
+    const otherProducts = items.filter(p => !influencerIds.has(p.seller_id));
+    return [...influencerProducts, ...otherProducts];
+  }, [influencerIds]);
 
   const fetchProducts = useCallback(async (searchTerm?: string) => {
     setLoading(true);
@@ -63,7 +86,9 @@ const Browse = () => {
 
     const { data } = await query;
     const results = data || [];
-    setProducts(results);
+    // Apply influencer priority sorting
+    const sortedResults = sortWithInfluencerPriority(results);
+    setProducts(sortedResults);
 
     // Fetch recommendations when there's a search term
     if (term && results.length > 0) {
@@ -92,7 +117,7 @@ const Browse = () => {
       });
       setSellerBadgeMap(map);
     }
-  }, [search, category, condition, area, priceRange]);
+  }, [search, category, condition, area, priceRange, sortWithInfluencerPriority]);
 
   const fetchRecommendations = async (matchedProducts: any[], searchTerm: string) => {
     // Get categories and price range from matched products
@@ -115,7 +140,7 @@ const Browse = () => {
     const { data: recData } = await recQuery;
     // Filter out products already in results
     const recs = (recData || []).filter(p => !matchedIds.has(p.id));
-    setRecommendations(recs.slice(0, 6));
+    setRecommendations(sortWithInfluencerPriority(recs.slice(0, 6)));
   };
 
   const fetchFallbackRecommendations = async (searchTerm: string) => {
@@ -137,7 +162,7 @@ const Browse = () => {
     }
 
     const { data } = await query;
-    setRecommendations(data || []);
+    setRecommendations(sortWithInfluencerPriority(data || []));
   };
 
   // Debounced search effect

@@ -196,6 +196,29 @@ const Index = () => {
   const [latestArticles, setLatestArticles] = useState<Article[]>([]);
   const [showEmail, setShowEmail] = useState(false);
   const [sellerBadgeMap, setSellerBadgeMap] = useState<Record<string, string[]>>({});
+  const [influencerIds, setInfluencerIds] = useState<Set<string>>(new Set());
+
+  // Fetch influencer user_ids on mount for priority sorting
+  useEffect(() => {
+    const fetchInfluencerIds = async () => {
+      const { data } = await supabase
+        .from("influencers")
+        .select("user_id")
+        .eq("status", "active");
+      if (data) {
+        setInfluencerIds(new Set(data.map((d: any) => d.user_id)));
+      }
+    };
+    fetchInfluencerIds();
+  }, []);
+
+  // Sort helper: influencer-owned products first, preserving order within each group
+  const sortWithInfluencerPriority = useCallback((items: any[]) => {
+    if (influencerIds.size === 0) return items;
+    const influencerProducts = items.filter(p => influencerIds.has(p.seller_id));
+    const otherProducts = items.filter(p => !influencerIds.has(p.seller_id));
+    return [...influencerProducts, ...otherProducts];
+  }, [influencerIds]);
 
   /* Carousel APIs for dots */
   const [trendingApi, setTrendingApi] = useState<CarouselApi>();
@@ -211,10 +234,10 @@ const Index = () => {
         .eq("is_sold", false)
         .order("created_at", { ascending: false })
         .limit(8);
-      setRecentProducts(data || []);
+      setRecentProducts(sortWithInfluencerPriority(data || []));
     };
     fetchRecent();
-  }, []);
+  }, [sortWithInfluencerPriority]);
 
   // Near You products
   useEffect(() => {
@@ -227,10 +250,10 @@ const Index = () => {
         .eq("area", profile.area as any)
         .order("created_at", { ascending: false })
         .limit(8);
-      setNearbyProducts(data || []);
+      setNearbyProducts(sortWithInfluencerPriority(data || []));
     };
     fetchNearby();
-  }, [profile?.area]);
+  }, [profile?.area, sortWithInfluencerPriority]);
 
   // Trending products (most viewed in last 7 days)
   useEffect(() => {
@@ -252,7 +275,7 @@ const Index = () => {
             .select("*")
             .in("id", ids)
             .eq("is_sold", false);
-          setTrendingProducts(products || []);
+          setTrendingProducts(sortWithInfluencerPriority(products || []));
           return;
         }
       }
@@ -263,10 +286,10 @@ const Index = () => {
         .eq("is_sold", false)
         .order("created_at", { ascending: false })
         .limit(8);
-      setTrendingProducts(data || []);
+      setTrendingProducts(sortWithInfluencerPriority(data || []));
     };
     fetchTrending();
-  }, []);
+  }, [sortWithInfluencerPriority]);
 
   // Latest articles
   useEffect(() => {

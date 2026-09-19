@@ -203,11 +203,6 @@ const Articles = () => {
                             {article.title}
                           </Link>
                         </h2>
-
-                        {/* Excerpt */}
-                        <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">
-                          {article.excerpt || article.content.slice(0, 200) + "..."}
-                        </p>
                       </div>
 
                       {/* Read more link */}
