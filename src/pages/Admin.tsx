@@ -10,7 +10,7 @@ import {
   Users, Package, CheckCircle, TrendingUp, ShieldAlert,
   Clock, Trophy, UserPlus, Trash2, Activity, Newspaper, Plus, Edit, Eye, EyeOff,
   Star, Mail, MessageSquare, Copy, Send, ChevronLeft, ChevronRight, Sparkles,
-  Link2, CircleDot
+  Link2, CircleDot, Search
 } from "lucide-react";
 import { PRODUCT_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
@@ -78,6 +78,7 @@ const Admin = () => {
   const [userBadges, setUserBadges] = useState<Record<string, string[]>>({});
   const [userPage, setUserPage] = useState(1);
   const [productPage, setProductPage] = useState(1);
+  const [productSearch, setProductSearch] = useState("");
   const PAGE_SIZE = 10;
 
   // Articles state
@@ -113,7 +114,7 @@ const Admin = () => {
     const [profilesRes, productsRes, reportRes, viewsRes, chatsRes, rolesRes] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("products").select("*").order("created_at", { ascending: false }),
-      supabase.from("product_reports").select("*, products(name, brand)").order("created_at", { ascending: false }),
+      supabase.from("product_reports").select("*, products(name, brand, seller_id)").order("created_at", { ascending: false }),
       supabase.from("product_views").select("product_id"),
       supabase.from("chats").select("product_id"),
       supabase.from("user_roles").select("*").eq("role", "admin"),
@@ -901,6 +902,33 @@ const Admin = () => {
 
             {activeTab === "products" && (
               <div className="space-y-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search by product name, brand, or area..."
+                    value={productSearch}
+                    onChange={e => { setProductSearch(e.target.value); setProductPage(1); }}
+                    className="pl-9"
+                  />
+                </div>
+                {(() => {
+                  const filteredProducts = productSearch.trim()
+                    ? products.filter(p => {
+                        const q = productSearch.toLowerCase();
+                        const sellerProfile = users.find(u => u.user_id === p.seller_id);
+                        const sellerName = sellerProfile?.full_name?.toLowerCase() || "";
+                        return (
+                          p.name?.toLowerCase().includes(q) ||
+                          p.brand?.toLowerCase().includes(q) ||
+                          p.area?.toLowerCase().includes(q) ||
+                          sellerName.includes(q)
+                        );
+                      })
+                    : products;
+                  return (
+                    <>
                 <div className="bg-card rounded-2xl border border-border shadow-card overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -913,11 +941,14 @@ const Admin = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {products.slice((productPage - 1) * PAGE_SIZE, productPage * PAGE_SIZE).map((p) => (
+                        {filteredProducts.slice((productPage - 1) * PAGE_SIZE, productPage * PAGE_SIZE).map((p) => {
+                          const sellerProfile = users.find(u => u.user_id === p.seller_id);
+                          return (
                           <tr key={p.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3">
                               <p className="font-medium text-foreground">{p.brand} {p.name}</p>
                               <p className="text-xs text-muted-foreground">{p.area}</p>
+                              <p className="text-xs text-primary/80 mt-0.5">by {sellerProfile?.full_name || "Unknown User"}</p>
                             </td>
                             <td className="px-4 py-3 font-semibold text-primary">₹{p.selling_price}</td>
                             <td className="px-4 py-3">
@@ -929,15 +960,16 @@ const Admin = () => {
                               <Button size="sm" variant="destructive" onClick={() => deleteProduct(p.id)} className="h-7 px-2 text-xs rounded-lg">Delete</Button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
-                {products.length > PAGE_SIZE && (
+                {filteredProducts.length > PAGE_SIZE && (
                   <div className="flex items-center justify-between px-2 text-xs text-muted-foreground">
                     <span>
-                      Showing {((productPage - 1) * PAGE_SIZE) + 1}–{Math.min(productPage * PAGE_SIZE, products.length)} of {products.length} products
+                      Showing {((productPage - 1) * PAGE_SIZE) + 1}–{Math.min(productPage * PAGE_SIZE, filteredProducts.length)} of {filteredProducts.length} products
                     </span>
                     <div className="flex items-center gap-2">
                       <Button
@@ -949,12 +981,12 @@ const Admin = () => {
                       >
                         <ChevronLeft className="w-3 h-3 mr-1" /> Prev
                       </Button>
-                      <span>Page {productPage} of {Math.ceil(products.length / PAGE_SIZE) || 1}</span>
+                      <span>Page {productPage} of {Math.ceil(filteredProducts.length / PAGE_SIZE) || 1}</span>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => setProductPage(p => Math.min(Math.ceil(products.length / PAGE_SIZE), p + 1))}
-                        disabled={productPage >= Math.ceil(products.length / PAGE_SIZE)}
+                        onClick={() => setProductPage(p => Math.min(Math.ceil(filteredProducts.length / PAGE_SIZE), p + 1))}
+                        disabled={productPage >= Math.ceil(filteredProducts.length / PAGE_SIZE)}
                         className="h-7 px-2"
                       >
                         Next <ChevronRight className="w-3 h-3 ml-1" />
@@ -962,6 +994,16 @@ const Admin = () => {
                     </div>
                   </div>
                 )}
+                {filteredProducts.length === 0 && productSearch.trim() && (
+                  <div className="text-center py-12 bg-card rounded-2xl border border-dashed border-border">
+                    <div className="text-4xl mb-3">🔍</div>
+                    <p className="font-semibold text-foreground">No products found</p>
+                    <p className="text-muted-foreground text-sm">Try a different search term</p>
+                  </div>
+                )}
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -973,21 +1015,38 @@ const Admin = () => {
                     <p className="font-semibold text-foreground">No reports yet</p>
                     <p className="text-muted-foreground text-sm">The platform looks clean!</p>
                   </div>
-                ) : reports.map((r) => (
+                ) : reports.map((r) => {
+                  // Find reporter and product owner profiles
+                  const reporterProfile = users.find(u => u.user_id === r.reporter_id);
+                  const productOwnerProfile = r.products?.seller_id
+                    ? users.find(u => u.user_id === r.products.seller_id)
+                    : null;
+                  return (
                   <div key={r.id} className="bg-card rounded-2xl border border-destructive/20 p-4 shadow-card">
                     <div className="flex items-start justify-between gap-3">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-semibold text-sm text-foreground">
                           {r.products?.brand} {r.products?.name}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(r.created_at).toLocaleDateString("en-IN")}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(r.created_at).toLocaleDateString("en-IN")}
+                          </p>
+                          <p className="text-xs text-primary/80">
+                            Reported by: <span className="font-medium">{reporterProfile?.full_name || "Unknown"}</span>
+                          </p>
+                          {productOwnerProfile && (
+                            <p className="text-xs text-amber-600">
+                              Product owner: <span className="font-medium">{productOwnerProfile.full_name || "Unknown"}</span>
+                            </p>
+                          )}
+                        </div>
                         <p className="text-sm text-foreground mt-2 bg-muted/30 rounded-xl p-2">{r.reason}</p>
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

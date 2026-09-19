@@ -245,8 +245,64 @@ const ArticleDetail = () => {
             </div>
 
             {/* Paragraphs */}
-            <div className="prose max-w-none text-foreground leading-relaxed text-base space-y-6 whitespace-pre-line">
-              {article.content}
+            <div className="prose max-w-none text-foreground leading-relaxed text-base space-y-4">
+              {article.content.split(/\n\n+/).map((block, blockIdx) => {
+                const trimmed = block.trim();
+                if (!trimmed) return null;
+
+                // Heading: ### (h3)
+                if (trimmed.startsWith("### ")) {
+                  return <h3 key={blockIdx} className="text-lg font-bold text-foreground mt-6 mb-2">{trimmed.slice(4)}</h3>;
+                }
+                // Heading: ## (h2)
+                if (trimmed.startsWith("## ")) {
+                  return <h2 key={blockIdx} className="text-xl font-bold text-foreground mt-8 mb-3">{trimmed.slice(3)}</h2>;
+                }
+                // Heading: # (h1)
+                if (trimmed.startsWith("# ")) {
+                  return <h2 key={blockIdx} className="text-2xl font-bold text-foreground mt-8 mb-3">{trimmed.slice(2)}</h2>;
+                }
+
+                // Bullet list block (lines starting with - or *)
+                const lines = trimmed.split("\n");
+                const isList = lines.every(l => /^\s*[-*]\s/.test(l) || !l.trim());
+                if (isList) {
+                  return (
+                    <ul key={blockIdx} className="list-disc pl-6 space-y-1.5">
+                      {lines.filter(l => l.trim()).map((item, li) => (
+                        <li key={li} className="text-foreground">{item.replace(/^\s*[-*]\s/, "")}</li>
+                      ))}
+                    </ul>
+                  );
+                }
+
+                // Regular paragraph — render inline formatting (bold, italic)
+                const formatInline = (text: string) => {
+                  // Split by bold **..** and italic *..* patterns
+                  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+                  return parts.map((part, i) => {
+                    if (part.startsWith("**") && part.endsWith("**")) {
+                      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+                    }
+                    if (part.startsWith("*") && part.endsWith("*")) {
+                      return <em key={i}>{part.slice(1, -1)}</em>;
+                    }
+                    return <span key={i}>{part}</span>;
+                  });
+                };
+
+                // Multi-line paragraph: preserve single newlines
+                return (
+                  <p key={blockIdx} className="text-foreground leading-relaxed">
+                    {lines.map((line, li) => (
+                      <span key={li}>
+                        {li > 0 && <br />}
+                        {formatInline(line)}
+                      </span>
+                    ))}
+                  </p>
+                );
+              })}
             </div>
 
             {/* Social Share Floating Container (Mobile and Desktop) */}

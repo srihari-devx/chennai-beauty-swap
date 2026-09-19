@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +33,7 @@ const ProductDetail = () => {
   const [canRate, setCanRate] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState("");
+  const reportSectionRef = useRef<HTMLDivElement>(null);
 
   const { score: trustScore, badges: sellerBadges, isVerified } = useTrustScore(product?.seller_id);
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -147,11 +148,28 @@ const ProductDetail = () => {
 
   const submitReport = async () => {
     if (!user || !product || !reportReason.trim()) return;
-    await supabase.from("product_reports").insert({ product_id: product.id, reporter_id: user.id, reason: reportReason });
+    // Build enriched reason with reporter info and product owner info
+    const reporterName = user.user_metadata?.full_name || user.email || "Unknown user";
+    const ownerName = sellerProfile?.full_name || "Unknown seller";
+    const enrichedReason = `[Reported by: ${reporterName}] [Product owner: ${ownerName}] ${reportReason.trim()}`;
+    await supabase.from("product_reports").insert({ product_id: product.id, reporter_id: user.id, reason: enrichedReason });
     toast.success("Report submitted. We'll review it.");
     setReportOpen(false);
     setReportReason("");
   };
+
+  const handleToggleReport = useCallback(() => {
+    setReportOpen(prev => {
+      const willOpen = !prev;
+      if (willOpen) {
+        // Scroll the report section into view after it renders
+        setTimeout(() => {
+          reportSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+        }, 100);
+      }
+      return willOpen;
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -378,9 +396,9 @@ const ProductDetail = () => {
 
             {/* Report */}
             {user && user.id !== product.seller_id && (
-              <div className="text-center">
+              <div className="text-center" ref={reportSectionRef}>
                 <button
-                  onClick={() => setReportOpen(!reportOpen)}
+                  onClick={handleToggleReport}
                   className="text-xs text-muted-foreground hover:text-destructive transition-colors inline-flex items-center gap-1"
                 >
                   <Flag className="w-3 h-3" /> Report this listing
