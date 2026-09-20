@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import InfluencerInsightsTab from "@/components/admin/InfluencerInsightsTab";
 
 interface ArticleRow {
   id: string;
@@ -1105,89 +1106,11 @@ const Admin = () => {
 
             {/* ─── INFLUENCERS TAB ─── */}
             {activeTab === "influencers" && (
-              <div className="space-y-6">
-                {/* Add Influencer */}
-                <div className="bg-card rounded-2xl border border-border shadow-card p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Link2 className="w-4 h-4 text-primary" />
-                    <h3 className="font-semibold text-foreground">Add New Influencer</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Enter the email of an existing user to make them an influencer. A referral link and slug will be auto-generated.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      type="email"
-                      placeholder="user@example.com"
-                      value={newInfluencerEmail}
-                      onChange={e => setNewInfluencerEmail(e.target.value)}
-                      className="max-w-sm"
-                    />
-                    <Input
-                      type="text"
-                      placeholder="Display name (optional)"
-                      value={newInfluencerName}
-                      onChange={e => setNewInfluencerName(e.target.value)}
-                      className="max-w-xs"
-                    />
-                    <Button onClick={addInfluencer} disabled={addingInfluencer || !newInfluencerEmail.trim()} className="gradient-cta text-primary-foreground border-0">
-                      {addingInfluencer ? "Adding..." : "Add Influencer"}
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Current Influencers */}
-                <div className="bg-card rounded-2xl border border-border shadow-card p-5">
-                  <h3 className="font-semibold text-foreground mb-4">Current Influencers ({influencersList.length})</h3>
-                  <div className="space-y-3">
-                    {influencersList.map(inf => (
-                      <div key={inf.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-muted/30">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-full gradient-cta flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                            {inf.name?.[0]?.toUpperCase() || "?"}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-foreground truncate">{inf.name}</p>
-                              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                                inf.status === "active"
-                                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                              }`}>
-                                <CircleDot className="w-2.5 h-2.5" />
-                                {inf.status === "active" ? "Active" : "Inactive"}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              /i/{inf.slug} · {inf.profile?.full_name || "No profile"} · {inf.profile?.area || ""}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => toggleInfluencerStatus(inf.id, inf.status)}
-                            className={`h-8 text-xs ${
-                              inf.status === "active"
-                                ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            }`}
-                          >
-                            {inf.status === "active" ? "Deactivate" : "Activate"}
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => removeInfluencer(inf.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {influencersList.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">No influencers added yet</p>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <InfluencerInsightsTab
+                influencersList={influencersList}
+                setInfluencersList={setInfluencersList}
+                onRefresh={fetchData}
+              />
             )}
 
             {/* ─── ARTICLES TAB ─── */}
