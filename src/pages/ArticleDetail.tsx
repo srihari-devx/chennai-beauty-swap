@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { cleanImageUrl } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,6 +75,184 @@ const ArticleImage = ({ src, alt, className }: { src: string; alt: string; class
       className={className}
       onError={() => setError(true)}
     />
+  );
+};
+
+// Configure marked for clean output
+marked.setOptions({
+  breaks: true,       // Convert \n to <br>
+  gfm: true,          // GitHub Flavored Markdown
+});
+
+/** Renders markdown content as sanitised HTML with article-quality typography */
+const ArticleContent = ({ content }: { content: string }) => {
+  const sanitizedHtml = useMemo(() => {
+    const rawHtml = marked.parse(content) as string;
+    return DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: [
+        "h1", "h2", "h3", "h4", "h5", "h6",
+        "p", "br", "hr",
+        "strong", "b", "em", "i", "u", "s", "del", "mark",
+        "ul", "ol", "li",
+        "a",
+        "blockquote",
+        "code", "pre",
+        "table", "thead", "tbody", "tr", "th", "td",
+        "img",
+        "span", "div", "sup", "sub",
+      ],
+      ALLOWED_ATTR: ["href", "target", "rel", "src", "alt", "class", "title"],
+    });
+  }, [content]);
+
+  return (
+    <>
+      <style>{`
+        .article-prose {
+          color: var(--foreground, #1a1a1a);
+          font-size: 1rem;
+          line-height: 1.8;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        .article-prose h1 {
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-top: 2rem;
+          margin-bottom: 0.75rem;
+          line-height: 1.3;
+          color: var(--foreground, #1a1a1a);
+        }
+        .article-prose h2 {
+          font-size: 1.45rem;
+          font-weight: 700;
+          margin-top: 1.75rem;
+          margin-bottom: 0.6rem;
+          line-height: 1.35;
+          color: var(--foreground, #1a1a1a);
+        }
+        .article-prose h3 {
+          font-size: 1.2rem;
+          font-weight: 600;
+          margin-top: 1.5rem;
+          margin-bottom: 0.5rem;
+          line-height: 1.4;
+          color: var(--foreground, #1a1a1a);
+        }
+        .article-prose h4, .article-prose h5, .article-prose h6 {
+          font-size: 1.05rem;
+          font-weight: 600;
+          margin-top: 1.25rem;
+          margin-bottom: 0.4rem;
+          color: var(--foreground, #1a1a1a);
+        }
+        .article-prose p {
+          margin-bottom: 1rem;
+          color: var(--foreground, #1a1a1a);
+        }
+        .article-prose strong, .article-prose b {
+          font-weight: 700;
+        }
+        .article-prose em, .article-prose i {
+          font-style: italic;
+        }
+        .article-prose a {
+          color: hsl(var(--primary, 340 65% 47%));
+          text-decoration: underline;
+          text-underline-offset: 2px;
+          transition: opacity 0.15s;
+        }
+        .article-prose a:hover {
+          opacity: 0.8;
+        }
+        .article-prose ul {
+          list-style-type: disc;
+          padding-left: 1.75rem;
+          margin-bottom: 1rem;
+        }
+        .article-prose ol {
+          list-style-type: decimal;
+          padding-left: 1.75rem;
+          margin-bottom: 1rem;
+        }
+        .article-prose li {
+          margin-bottom: 0.35rem;
+          line-height: 1.7;
+        }
+        .article-prose li > ul, .article-prose li > ol {
+          margin-top: 0.25rem;
+          margin-bottom: 0.25rem;
+        }
+        .article-prose blockquote {
+          border-left: 4px solid hsl(var(--primary, 340 65% 47%) / 0.4);
+          padding: 0.75rem 1.25rem;
+          margin: 1.25rem 0;
+          background: hsl(var(--muted, 0 0% 96%));
+          border-radius: 0 0.5rem 0.5rem 0;
+          color: var(--foreground, #1a1a1a);
+          font-style: italic;
+        }
+        .article-prose blockquote p {
+          margin-bottom: 0.25rem;
+        }
+        .article-prose code {
+          background: hsl(var(--muted, 0 0% 96%));
+          padding: 0.15rem 0.4rem;
+          border-radius: 0.25rem;
+          font-size: 0.875em;
+          font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+        }
+        .article-prose pre {
+          background: hsl(var(--muted, 0 0% 96%));
+          padding: 1rem 1.25rem;
+          border-radius: 0.75rem;
+          margin: 1.25rem 0;
+          overflow-x: auto;
+          border: 1px solid var(--border, #e5e7eb);
+        }
+        .article-prose pre code {
+          background: none;
+          padding: 0;
+          font-size: 0.875rem;
+        }
+        .article-prose hr {
+          border: none;
+          border-top: 1px solid var(--border, #e5e7eb);
+          margin: 2rem 0;
+        }
+        .article-prose table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1.25rem 0;
+          font-size: 0.9rem;
+        }
+        .article-prose th, .article-prose td {
+          border: 1px solid var(--border, #e5e7eb);
+          padding: 0.5rem 0.75rem;
+          text-align: left;
+        }
+        .article-prose th {
+          background: hsl(var(--muted, 0 0% 96%));
+          font-weight: 600;
+        }
+        .article-prose img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.75rem;
+          margin: 1.25rem 0;
+        }
+        .article-prose > *:first-child {
+          margin-top: 0;
+        }
+        .article-prose > *:last-child {
+          margin-bottom: 0;
+        }
+      `}</style>
+      <div
+        className="article-prose max-w-none"
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+      />
+    </>
   );
 };
 
@@ -244,66 +424,8 @@ const ArticleDetail = () => {
               </div>
             </div>
 
-            {/* Paragraphs */}
-            <div className="prose max-w-none text-foreground leading-relaxed text-base space-y-4">
-              {article.content.split(/\n\n+/).map((block, blockIdx) => {
-                const trimmed = block.trim();
-                if (!trimmed) return null;
-
-                // Heading: ### (h3)
-                if (trimmed.startsWith("### ")) {
-                  return <h3 key={blockIdx} className="text-lg font-bold text-foreground mt-6 mb-2">{trimmed.slice(4)}</h3>;
-                }
-                // Heading: ## (h2)
-                if (trimmed.startsWith("## ")) {
-                  return <h2 key={blockIdx} className="text-xl font-bold text-foreground mt-8 mb-3">{trimmed.slice(3)}</h2>;
-                }
-                // Heading: # (h1)
-                if (trimmed.startsWith("# ")) {
-                  return <h2 key={blockIdx} className="text-2xl font-bold text-foreground mt-8 mb-3">{trimmed.slice(2)}</h2>;
-                }
-
-                // Bullet list block (lines starting with - or *)
-                const lines = trimmed.split("\n");
-                const isList = lines.every(l => /^\s*[-*]\s/.test(l) || !l.trim());
-                if (isList) {
-                  return (
-                    <ul key={blockIdx} className="list-disc pl-6 space-y-1.5">
-                      {lines.filter(l => l.trim()).map((item, li) => (
-                        <li key={li} className="text-foreground">{item.replace(/^\s*[-*]\s/, "")}</li>
-                      ))}
-                    </ul>
-                  );
-                }
-
-                // Regular paragraph — render inline formatting (bold, italic)
-                const formatInline = (text: string) => {
-                  // Split by bold **..** and italic *..* patterns
-                  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
-                  return parts.map((part, i) => {
-                    if (part.startsWith("**") && part.endsWith("**")) {
-                      return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
-                    }
-                    if (part.startsWith("*") && part.endsWith("*")) {
-                      return <em key={i}>{part.slice(1, -1)}</em>;
-                    }
-                    return <span key={i}>{part}</span>;
-                  });
-                };
-
-                // Multi-line paragraph: preserve single newlines
-                return (
-                  <p key={blockIdx} className="text-foreground leading-relaxed">
-                    {lines.map((line, li) => (
-                      <span key={li}>
-                        {li > 0 && <br />}
-                        {formatInline(line)}
-                      </span>
-                    ))}
-                  </p>
-                );
-              })}
-            </div>
+            {/* Article Body — rendered markdown */}
+            <ArticleContent content={article.content} />
 
             {/* Social Share Floating Container (Mobile and Desktop) */}
             <div className="mt-10 pt-6 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
